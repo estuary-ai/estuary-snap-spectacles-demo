@@ -1,0 +1,56 @@
+- !<AssetImportMetadata/c4819169-0a7f-499c-b0e6-5442c5f6f1b0>
+  ImportedAssetIds:
+    TypeScriptAsset: !<reference> 1a8f08b2-264a-419f-8a1e-5a4bc9766c0f
+  ImporterName: TypeScriptAssetImporter
+  PrimaryAsset: !<reference> 1a8f08b2-264a-419f-8a1e-5a4bc9766c0f
+  PackageType: NotAPackage
+  LegacyPackagePolicy: ~
+  ExtraData:
+    {}
+  AssetDataMap:
+    TypeScriptAsset: !<own> 3a818a7f-4bc0-49d2-9458-c77049859670
+  DependentFiles:
+    []
+  ImporterSettings: !<AssetImporterSettings>
+    {}
+  CompressionSettings: !<own> 00000000-0000-0000-0000-000000000000
+- !<TypeScriptAssetData/3a818a7f-4bc0-49d2-9458-c77049859670>
+  SvgIcon: ""
+  SetupScript:
+    code: ""
+  Description: ""
+  VersionMajor: 0
+  VersionMinor: 0
+  VersionPatch: 0
+  ComponentUid: 7fe5eba6-0981-4f4a-a9e1-e3e7a055efb2
+  ExportUid: 00000000-0000-0000-0000-000000000000
+  PackagePolicy: CanBeUnpacked
+  ScriptInputsHidden:
+    audioComponent: false
+    audioTrack: false
+    sampleRate: false
+    toneDuration: false
+    toneFrequency: false
+  ScriptTypesHidden:
+    {}
+  ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
+  DeclarationFile: !<reference> 00000000-0000-0000-0000-000000000000
+  Tags:
+    []
+  Attachments:
+    []
+  DefaultScriptInputs:
+    - audioTrack: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
+      audioComponent: !<reference.AudioComponent> 00000000-0000-0000-0000-000000000000
+      sampleRate: !<float> 24000.000000
+      toneFrequency: !<float> 440.000000
+      toneDuration: !<float> 2.000000
+  ScriptTypes:
+    -
+      {}
+  InputLines:
+    - '// @input Asset.AudioTrackAsset audioTrack {"hint":"Audio Track asset with Output type"}'
+    - '// @input Component.AudioComponent audioComponent {"hint":"Audio Component that will play the audio"}'
+    - '// @input float sampleRate = 44100 {"hint":"Sample rate for generated audio (use 44100 to match Lens Studio default)"}'
+    - '// @input float toneFrequency = 440 {"hint":"Frequency of test tone in Hz"}'
+    - '// @input float toneDuration = 2 {"hint":"Duration of test tone in seconds"}'

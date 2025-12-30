@@ -1,20 +1,20 @@
-- !<AssetImportMetadata/f42d392f-ce18-44f6-8dc0-7cb7473c0571>
+- !<AssetImportMetadata/dbde1da3-4d50-4643-b617-da354ed95878>
   ImportedAssetIds:
-    TypeScriptAsset: !<reference> 76a2773a-0972-4180-b4ad-a5dbeffe9fb8
+    TypeScriptAsset: !<reference> e780724e-9de7-464c-a83b-7cdf30c6fbc0
   ImporterName: TypeScriptAssetImporter
-  PrimaryAsset: !<reference> 76a2773a-0972-4180-b4ad-a5dbeffe9fb8
+  PrimaryAsset: !<reference> e780724e-9de7-464c-a83b-7cdf30c6fbc0
   PackageType: NotAPackage
   LegacyPackagePolicy: ~
   ExtraData:
     {}
   AssetDataMap:
-    TypeScriptAsset: !<own> e67ceeca-f0e4-4ec4-a3bc-0acbfbb3a852
+    TypeScriptAsset: !<own> 7bd22a0c-47b9-4edc-adff-90026449f284
   DependentFiles:
     []
   ImporterSettings: !<AssetImporterSettings>
     {}
   CompressionSettings: !<own> 00000000-0000-0000-0000-000000000000
-- !<TypeScriptAssetData/e67ceeca-f0e4-4ec4-a3bc-0acbfbb3a852>
+- !<TypeScriptAssetData/7bd22a0c-47b9-4edc-adff-90026449f284>
   SvgIcon: ""
   SetupScript:
     code: ""
@@ -22,17 +22,19 @@
   VersionMajor: 0
   VersionMinor: 0
   VersionPatch: 0
-  ComponentUid: be6d8815-8ed4-4fcc-bdb0-81b0de90a2ef
+  ComponentUid: b0208379-eb1f-4e2a-b9e1-22d24bc6f7ba
   ExportUid: 00000000-0000-0000-0000-000000000000
   PackagePolicy: CanBeUnpacked
   ScriptInputsHidden:
     apiKey: false
-    audioInput: false
     audioOutput: false
     characterId: false
     debugMode: false
     internetModule: false
+    microphoneAudio: false
+    microphoneRecorderObject: false
     serverUrl: false
+    useTestTone: false
   ScriptTypesHidden:
     {}
   ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
@@ -42,21 +44,25 @@
   Attachments:
     []
   DefaultScriptInputs:
-    - internetModule: !<reference.InternetModule> 00000000-0000-0000-0000-000000000000
-      serverUrl: "ws://localhost:4001"
+    - serverUrl: "ws://localhost:4001"
       characterId: 3799f1e4-1b67-426f-a342-65d40afc89e4
-      audioInput: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
-      audioOutput: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
+      microphoneRecorderObject: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
+      microphoneAudio: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
       apiKey: est_QZV8LFmvBgq3rBfK39x22aWL_ukR4jd_cH7vBFGr4MU
       debugMode: true
+      useTestTone: false
+      internetModule: !<reference.InternetModule> 00000000-0000-0000-0000-000000000000
+      audioOutput: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
   ScriptTypes:
     -
       {}
   InputLines:
-    - '// @input Asset.InternetModule internetModule {"hint":"Add Internet Module from Asset Library > Helper Scripts"}'
     - '// @input string serverUrl = "ws://localhost:4001" {"hint":"Estuary server WebSocket URL"}'
     - '// @input string characterId = "3799f1e4-1b67-426f-a342-65d40afc89e4" {"hint":"Character/Agent ID from your Estuary backend"}'
-    - '// @input Asset.AudioTrackAsset audioInput {"hint":"AudioTrackAsset for microphone input"}'
-    - '// @input Asset.AudioTrackAsset audioOutput {"hint":"AudioTrackAsset for speaker output"}'
+    - '// @input SceneObject microphoneRecorderObject {"hint":"SceneObject with MicrophoneRecorder script"}'
+    - '// @input Asset.AudioTrackAsset microphoneAudio {"hint":"Audio From Microphone asset (fallback if no MicrophoneRecorder)"}'
     - '// @input string apiKey = "est_QZV8LFmvBgq3rBfK39x22aWL_ukR4jd_cH7vBFGr4MU"'
     - // @input bool debugMode = true
+    - '// @input bool useTestTone {"hint":"Enable for simulator testing (generates 440Hz test tone)"}'
+    - '// @input Asset.InternetModule internetModule {"hint":"Connect the InternetModule from your scene"}'
+    - '// @input Asset.AudioTrackAsset audioOutput {"hint":"Audio Track asset for voice playback"}'

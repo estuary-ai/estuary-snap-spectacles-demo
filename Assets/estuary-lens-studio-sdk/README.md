@@ -188,7 +188,8 @@ Handles microphone input for voice chat.
 |----------|-------------|
 | `targetCharacter` | Character to send audio to |
 | `sampleRate` | Recording sample rate (16000) |
-| `chunkDurationMs` | Audio chunk size in ms |
+| `streamImmediately` | Send audio as received (default: true, lowest latency) |
+| `chunkDurationMs` | Audio chunk size in ms (used when streamImmediately=false) |
 | `vadThreshold` | Voice activity threshold |
 
 ### EstuaryAudioPlayer
@@ -277,6 +278,7 @@ const samples = decodeAudio(base64);
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
+
 
 
 

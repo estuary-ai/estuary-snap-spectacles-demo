@@ -171,6 +171,22 @@
   DecayType: None
   DecayLimit: false
   DecayRange: 40.000000
+- !<ScriptComponent/5c197bd5-db46-42ce-87b9-e7e390f5bb89>
+  PrefabRemaps:
+    []
+  Name: MicrophoneRecorder
+  Enabled: true
+  ScriptAsset: !<reference> bc168e67-17cb-4051-b86a-1d8ed4094e8f
+  ScriptInputsDefault:
+    {}
+  ScriptTypesDefault:
+    {}
+  ScriptInputs:
+    "":
+      micAudioTrack: !<reference.AudioTrackAsset> 683b71a5-7d79-421d-9f72-238a7221025b
+  ScriptTypes:
+    "":
+      {}
 - !<SceneObject/62dbf76e-abbb-4639-aa91-e569663861c6>
   PrefabRemaps:
     []
@@ -201,28 +217,6 @@
     []
   Components:
     - !<own> e6b8e99d-2157-42e5-843e-69b555fc076f
-- !<ScriptComponent/78c9abee-be8b-44f7-802d-6fabd9557a1f>
-  PrefabRemaps:
-    []
-  Name: AudioPlaybackTest
-  Enabled: false
-  ScriptAsset: !<reference> 1a8f08b2-264a-419f-8a1e-5a4bc9766c0f
-  ScriptInputsDefault:
-    sampleRate: true
-    toneFrequency: true
-    toneDuration: true
-  ScriptTypesDefault:
-    {}
-  ScriptInputs:
-    "":
-      audioTrack: !<reference.AudioTrackAsset> 94196bba-1fc1-422d-8c75-104d578155a6
-      audioComponent: !<reference.AudioComponent> e6b8e99d-2157-42e5-843e-69b555fc076f
-      sampleRate: !<float> 24000.000000
-      toneFrequency: !<float> 440.000000
-      toneDuration: !<float> 2.000000
-  ScriptTypes:
-    "":
-      {}
 - !<ScriptComponent/7caf89dd-e96c-4c26-a11e-22c80f67071d>
   PrefabRemaps:
     []
@@ -246,21 +240,24 @@
     []
   Name: SimpleAutoConnect
   Enabled: true
-  ScriptAsset: !<reference> 76a2773a-0972-4180-b4ad-a5dbeffe9fb8
+  ScriptAsset: !<reference> e780724e-9de7-464c-a83b-7cdf30c6fbc0
   ScriptInputsDefault:
     serverUrl: true
     debugMode: true
+    useTestTone: true
   ScriptTypesDefault:
     {}
   ScriptInputs:
     "":
-      internetModule: !<reference.InternetModule> 526d4deb-e562-4800-87e2-98140b398ecb
       serverUrl: "ws://localhost:4001"
-      characterId: 8b26e20f-11d2-4153-b2a2-8eff697949b5
-      audioInput: !<reference.AudioTrackAsset> 683b71a5-7d79-421d-9f72-238a7221025b
-      audioOutput: !<reference.AudioTrackAsset> 94196bba-1fc1-422d-8c75-104d578155a6
-      apiKey: est_dQcN-VCJOYqRdsG71T7PjeAy7qg7UZZCLpTWucy2tFY
+      characterId: 6cb63b79-237a-4dcf-887c-70042c89ffc2
+      microphoneRecorderObject: !<reference.SceneObject> c7d04291-fc00-4f58-bb6b-19aed41857c0
+      microphoneAudio: !<reference.AudioTrackAsset> 683b71a5-7d79-421d-9f72-238a7221025b
+      apiKey: est_io399C1Orke3bfgmiSlfM9RpDox1U0arkEJFwwSVeEU
       debugMode: true
+      useTestTone: false
+      internetModule: !<reference.InternetModule> 526d4deb-e562-4800-87e2-98140b398ecb
+      audioOutput: !<reference.AudioTrackAsset> 94196bba-1fc1-422d-8c75-104d578155a6
   ScriptTypes:
     "":
       {}
@@ -277,10 +274,25 @@
     HasSegmentScaleCompensation: false
   Children:
     - !<own> 6dd1fcec-f498-43dc-9e18-7b0af1826c32
+    - !<own> c7d04291-fc00-4f58-bb6b-19aed41857c0
   Components:
     - !<own> 7caf89dd-e96c-4c26-a11e-22c80f67071d
     - !<own> 93e405d7-7180-4c11-870d-461caad2969c
-    - !<own> 78c9abee-be8b-44f7-802d-6fabd9557a1f
+- !<SceneObject/c7d04291-fc00-4f58-bb6b-19aed41857c0>
+  PrefabRemaps:
+    []
+  Name: Estuary Audio Input
+  Enabled: true
+  Layers: 1
+  LocalTransform: !<TransformEntity>
+    Position: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Rotation: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Scale: {x: 1.000000, y: 1.000000, z: 1.000000}
+    HasSegmentScaleCompensation: false
+  Children:
+    []
+  Components:
+    - !<own> 5c197bd5-db46-42ce-87b9-e7e390f5bb89
 - !<AudioComponent/e6b8e99d-2157-42e5-843e-69b555fc076f>
   PrefabRemaps:
     []

@@ -93,6 +93,7 @@ export class VoiceChatExample {
         // Configure microphone if available
         if (audioInput) {
             this.microphone.setAudioInput(audioInput);
+            this.microphone.streamImmediately = true;  // Low-latency streaming (default)
             this.microphone.debugLogging = true;
         }
 
@@ -359,6 +360,7 @@ export class EstuaryVoiceChat extends BaseScriptComponent {
 // --- END COPY HERE ---
 
  */
+
 
 
 

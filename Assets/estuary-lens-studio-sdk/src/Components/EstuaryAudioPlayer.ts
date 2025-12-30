@@ -1,3 +1,4 @@
+
 /**
  * Audio player component for Estuary voice responses in Lens Studio.
  * Uses Lens Studio's Audio Output API to stream PCM audio data.

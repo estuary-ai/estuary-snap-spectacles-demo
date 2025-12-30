@@ -104,6 +104,14 @@ export class EstuaryClient extends EventEmitter<any> {
     private _disposed: boolean = false;
     private _namespace: string = SDK_NAMESPACE;
     private _auth: AuthenticateData | null = null;
+    
+    // Send queue to prevent WebSocket message corruption
+    // Lens Studio's WebSocket concatenates rapid sends into single packets!
+    private _sendQueue: string[] = [];
+    private _isSending: boolean = false;
+    private _lastSendTime: number = 0;
+    private _minSendGapMs: number = 100; // Minimum 100ms gap - Lens Studio WebSocket needs time to flush
+    private _maxQueueSize: number = 5; // Drop old audio if queue gets too long
 
     /**
      * Create a new EstuaryClient.
@@ -190,7 +198,7 @@ export class EstuaryClient extends EventEmitter<any> {
         if (this._webSocket) {
             try {
                 // Send Socket.IO disconnect for namespace
-                this.sendRaw(`41${this._namespace}`);
+                this.sendRaw('41' + this._namespace);
                 this._webSocket.close();
             } catch (e) {
                 this.log(`Error during disconnect: ${e}`);
@@ -230,7 +238,7 @@ export class EstuaryClient extends EventEmitter<any> {
 
         // Validate and clean the base64 string - remove any non-base64 characters
         // This prevents garbage bytes from corrupting the JSON payload
-        const cleanBase64 = audioBase64.replace(/[^A-Za-z0-9+/=]/g, '');
+        let cleanBase64 = audioBase64.replace(/[^A-Za-z0-9+/=]/g, '');
         
         if (cleanBase64.length !== audioBase64.length) {
             this.log(`Cleaned ${audioBase64.length - cleanBase64.length} invalid chars from audio base64`);
@@ -239,7 +247,12 @@ export class EstuaryClient extends EventEmitter<any> {
         if (cleanBase64.length === 0) {
             return;
         }
-
+        
+        // Ensure base64 length is multiple of 4 (add padding if needed)
+        const remainder = cleanBase64.length % 4;
+        if (remainder > 0) {
+            cleanBase64 += '='.repeat(4 - remainder);
+        }
 
         const payload: AudioPayload = { audio: cleanBase64 };
         this.emitSocketEvent('stream_audio', payload);
@@ -423,13 +436,15 @@ export class EstuaryClient extends EventEmitter<any> {
             // Engine.IO open - now connect to namespace with auth
             this.log('Engine.IO connected, joining namespace...');
             const authJson = JSON.stringify(this._auth);
-            this.sendRaw(`40${this._namespace},${authJson}`);
+            // Use string concatenation instead of template literals for reliability
+            const connectMsg = '40' + this._namespace + ',' + authJson;
+            this.sendRaw(connectMsg);
         }
         else if (message.startsWith('2')) {
             // Engine.IO ping - respond with pong
             this.sendRaw('3');
         }
-        else if (message.startsWith(`40${this._namespace}`) || message.startsWith('40,')) {
+        else if (message.startsWith('40' + this._namespace) || message.startsWith('40,')) {
             // Socket.IO namespace connected
             this.log('Namespace connected, waiting for session_info...');
             // The server should send session_info event after successful auth
@@ -623,25 +638,102 @@ export class EstuaryClient extends EventEmitter<any> {
         } else {
             payload = JSON.stringify([eventName]);
         }
-        const message = `42${this._namespace},${payload}`;
+        // Use string concatenation instead of template literals for reliability
+        const message = '42' + this._namespace + ',' + payload;
         this.sendRaw(message);
     }
 
     /**
      * Send raw message to WebSocket.
+     * Uses a queue to prevent simultaneous sends which can cause corruption.
      */
     private sendRaw(message: string): void {
-        if (this._webSocket) {
-            // Ensure message is clean ASCII/UTF-8 with no trailing garbage
-            const cleanMessage = message.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+        if (!this._webSocket) {
+            return;
+        }
+        
+        // Clean the message aggressively to prevent garbage bytes
+        // 1. Remove control characters
+        let cleanMessage = message.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+        
+        // 2. For JSON-containing messages, ensure they end correctly
+        // Socket.IO messages end with } or ] for the JSON payload
+        if (cleanMessage.includes('{') || cleanMessage.includes('[')) {
+            // Find the last valid JSON terminator
+            const lastBrace = cleanMessage.lastIndexOf('}');
+            const lastBracket = cleanMessage.lastIndexOf(']');
+            const lastValid = Math.max(lastBrace, lastBracket);
             
-            this.log(`Sending (${cleanMessage.length} chars): ${cleanMessage.substring(0, 100)}${cleanMessage.length > 100 ? '...' : ''}`);
-            try {
-                this._webSocket.send(cleanMessage);
-            } catch (e) {
-                this.logError(`Failed to send message: ${e}`);
+            if (lastValid > 0 && lastValid < cleanMessage.length - 1) {
+                // There's garbage after the JSON - truncate it
+                const garbage = cleanMessage.substring(lastValid + 1);
+                this.log('Removing trailing garbage: "' + garbage + '" (' + garbage.length + ' chars)');
+                cleanMessage = cleanMessage.substring(0, lastValid + 1);
             }
         }
+        
+        // Add to queue, but manage overflow for audio messages
+        if (this._sendQueue.length >= this._maxQueueSize) {
+            // Queue is full - drop oldest audio messages to make room
+            // Keep non-audio messages (they're important for protocol)
+            const isAudioMessage = cleanMessage.includes('stream_audio');
+            if (isAudioMessage) {
+                // Find and remove oldest audio message
+                for (let i = 0; i < this._sendQueue.length; i++) {
+                    if (this._sendQueue[i].includes('stream_audio')) {
+                        this._sendQueue.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        this._sendQueue.push(cleanMessage);
+        
+        // Process queue if not already processing
+        this.processSendQueue();
+    }
+    
+    /**
+     * Process the send queue - sends ONE message only.
+     * CRITICAL: Do NOT recurse or send multiple messages per call!
+     * Lens Studio's WebSocket concatenates rapid sends into single TCP packets,
+     * which corrupts the Socket.IO protocol.
+     */
+    private processSendQueue(): void {
+        if (this._isSending || this._sendQueue.length === 0 || !this._webSocket) {
+            return;
+        }
+        
+        // STRICT gap enforcement - Lens Studio WebSocket needs time to flush
+        const now = Date.now();
+        const timeSinceLastSend = now - this._lastSendTime;
+        if (timeSinceLastSend < this._minSendGapMs) {
+            // Not enough time passed - wait for next frame
+            // Do NOT recurse, do NOT process more messages
+            return;
+        }
+        
+        this._isSending = true;
+        const message = this._sendQueue.shift()!;
+        
+        // Only log non-audio messages or every 10th audio to reduce log spam
+        const isAudio = message.includes('stream_audio');
+        if (!isAudio) {
+            this.log('Sending (' + message.length + ' chars): ' + message.substring(0, 100) + (message.length > 100 ? '...' : ''));
+        }
+        
+        try {
+            this._webSocket.send(message);
+            this._lastSendTime = now;
+        } catch (e) {
+            this.logError('Failed to send message: ' + e);
+        }
+        
+        this._isSending = false;
+        
+        // Do NOT process next message here!
+        // Wait for next frame/call to avoid Lens Studio WebSocket concatenation bug
     }
 
     private log(message: string): void {

@@ -1,8 +1,8 @@
-- !<AssetImportMetadata/569ce338-74b1-4021-abb5-e53d445fa541>
+- !<AssetImportMetadata/4712da32-885a-4f5d-9692-d7b1e4960139>
   ImportedAssetIds:
-    JsonAsset: !<reference> 8a5ec9d9-d208-4f3c-9608-bd90daec61a6
+    JsonAsset: !<reference> fbc9bbe3-7c6c-4b68-bc8b-c3542a21bd8d
   ImporterName: JsonAssetImporter
-  PrimaryAsset: !<reference> 8a5ec9d9-d208-4f3c-9608-bd90daec61a6
+  PrimaryAsset: !<reference> fbc9bbe3-7c6c-4b68-bc8b-c3542a21bd8d
   PackageType: NotAPackage
   LegacyPackagePolicy: ~
   ExtraData:

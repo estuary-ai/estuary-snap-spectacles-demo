@@ -242,18 +242,17 @@
   Enabled: true
   ScriptAsset: !<reference> e780724e-9de7-464c-a83b-7cdf30c6fbc0
   ScriptInputsDefault:
-    serverUrl: true
     debugMode: true
     useTestTone: true
   ScriptTypesDefault:
     {}
   ScriptInputs:
     "":
-      serverUrl: "ws://localhost:4001"
-      characterId: 6cb63b79-237a-4dcf-887c-70042c89ffc2
+      serverUrl: "wss://api.estuary-ai.com"
+      characterId: 8707971d-fe8a-47c6-aad9-7ba6a65848dd
       microphoneRecorderObject: !<reference.SceneObject> c7d04291-fc00-4f58-bb6b-19aed41857c0
       microphoneAudio: !<reference.AudioTrackAsset> 683b71a5-7d79-421d-9f72-238a7221025b
-      apiKey: est_io399C1Orke3bfgmiSlfM9RpDox1U0arkEJFwwSVeEU
+      apiKey: est_wpWw1h-Ggf9ZXp1-K-NarJ32GzrHG16fdK6karqDJ3I
       debugMode: true
       useTestTone: false
       internetModule: !<reference.InternetModule> 526d4deb-e562-4800-87e2-98140b398ecb

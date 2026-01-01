@@ -12,7 +12,6 @@
 
 import { BotVoice } from '../Models/BotVoice';
 import { IEstuaryAudioPlayer } from './EstuaryCharacter';
-import { decodeAudio } from '../Utilities/Base64Helper';
 import { DEFAULT_PLAYBACK_SAMPLE_RATE } from '../Utilities/AudioConverter';
 import { EventEmitter } from '../Core/EstuaryEvents';
 
@@ -58,7 +57,7 @@ export class EstuaryAudioPlayer
     // ==================== State ====================
 
     /** Queue of audio chunks waiting to be played */
-    private _audioQueue: Float32Array[] = [];
+    private _audioQueue: Uint8Array[] = [];
 
     /** Current position in the current chunk */
     private _currentChunkPosition: number = 0;
@@ -163,8 +162,12 @@ export class EstuaryAudioPlayer
             }
         }
 
-        // Decode audio from base64 to Float32Array
-        const audioData = decodeAudio(voice.audio);
+        // Decode audio from base64 to UInt8Array
+
+        // TODO: use Snap official base64 class
+        // base64.encode 
+        // base64.decode
+        const audioData = Base64.decode(voice.audio);
         
         if (audioData.length === 0) {
             this.log('Failed to decode audio data');

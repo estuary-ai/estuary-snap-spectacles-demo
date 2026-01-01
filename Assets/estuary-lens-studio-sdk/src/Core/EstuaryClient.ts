@@ -776,6 +776,8 @@ export class EstuaryClient extends EventEmitter<any> {
             case 1001: return 'Going away - server shutting down or browser navigating away';
             case 1002: return 'Protocol error - endpoint received malformed frame';
             case 1003: return 'Unsupported data - received data type not supported';
+            case 1005: return 'No status received - no close code was provided';
+            case 1006: return 'Abnormal closure - connection dropped without close frame (network issue, server crash, or TLS failure)';
             case 1007: return 'Invalid frame payload data - message contained inconsistent data';
             case 1008: return 'Policy violation - message violates policy';
             case 1009: return 'Message too big - message exceeded size limit';

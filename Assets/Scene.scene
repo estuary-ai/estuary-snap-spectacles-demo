@@ -217,6 +217,23 @@
     []
   Components:
     - !<own> e6b8e99d-2157-42e5-843e-69b555fc076f
+    - !<own> 75aab4cc-a5c7-4043-9565-3405bd504136
+- !<ScriptComponent/75aab4cc-a5c7-4043-9565-3405bd504136>
+  PrefabRemaps:
+    []
+  Name: DynamicAudioOutput
+  Enabled: true
+  ScriptAsset: !<reference> 3bfdf77c-f23d-412c-aecc-d6e31ef576e9
+  ScriptInputsDefault:
+    {}
+  ScriptTypesDefault:
+    {}
+  ScriptInputs:
+    "":
+      audioOutputTrack: !<reference.AudioTrackAsset> 94196bba-1fc1-422d-8c75-104d578155a6
+  ScriptTypes:
+    "":
+      {}
 - !<ScriptComponent/7caf89dd-e96c-4c26-a11e-22c80f67071d>
   PrefabRemaps:
     []

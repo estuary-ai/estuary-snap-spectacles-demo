@@ -12,9 +12,11 @@
  * 4. Add a MicrophoneRecorder component (from RemoteServiceGateway.lspkg):
  *    - This is the RECOMMENDED way to capture microphone audio
  *    - Provides event-based audio delivery (works in simulator!)
- * 5. Add an Audio Track asset for voice playback:
- *    - Asset Browser → "+" → Audio → Audio Track
- *    - Connect it to the audioOutput input
+ * 5. Add DynamicAudioOutput for voice playback:
+ *    - Create a SceneObject with DynamicAudioOutput script
+ *    - Add an AudioComponent to the same SceneObject
+ *    - Create an Audio Track asset and assign it to DynamicAudioOutput
+ *    - Connect the SceneObject to dynamicAudioOutputObject input
  * 6. Set the serverUrl and characterId in the Inspector
  * 7. Make sure your character has a Voice Preset configured in the dashboard!
  * 
@@ -29,11 +31,12 @@
 
 import { EstuaryCharacter } from '../src/Components/EstuaryCharacter';
 import { EstuaryMicrophone, MicrophoneAudioProvider, MicrophoneRecorder } from '../src/Components/EstuaryMicrophone';
-import { EstuaryAudioPlayer, AudioOutputControl } from '../src/Components/EstuaryAudioPlayer';
+import { DynamicAudioOutput } from '../src/Components/DynamicAudioOutput';
 import { EstuaryConfig } from '../src/Core/EstuaryConfig';
 import { setInternetModule } from '../src/Core/EstuaryClient';
 import { SessionInfo } from '../src/Models/SessionInfo';
 import { BotResponse } from '../src/Models/BotResponse';
+import { BotVoice } from '../src/Models/BotVoice';
 import { SttResponse } from '../src/Models/SttResponse';
 
 @component
@@ -96,21 +99,36 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     internetModule: InternetModule;
     
     /** 
-     * Audio Track asset for playing bot voice responses.
-     * In Lens Studio: Asset Browser → "+" → Audio → Audio Track
-     * Make sure to also add an AudioComponent to your scene to hear the audio.
+     * SceneObject with DynamicAudioOutput script for playing bot voice responses.
+     * This is Snap's recommended approach for hardware-compatible audio playback.
+     * 
+     * Setup:
+     * 1. Create a SceneObject
+     * 2. Add the DynamicAudioOutput script to it
+     * 3. Add an AudioComponent to the same SceneObject
+     * 4. Create an Audio Track asset and assign it to DynamicAudioOutput's audioOutputTrack
+     * 5. Drag the SceneObject here
      */
     @input
-    @hint("Audio Track asset for voice playback")
-    audioOutput: AudioTrackAsset;
+    @hint("SceneObject with DynamicAudioOutput script for voice playback")
+    dynamicAudioOutputObject: SceneObject;
+    
+    /** 
+     * Default sample rate for audio playback.
+     * ElevenLabs uses 24000Hz, other TTS providers may vary.
+     */
+    @input
+    @hint("Sample rate for audio playback (e.g., 24000 for ElevenLabs)")
+    audioSampleRate: number = 24000;
     
     // ==================== Private Members ====================
     
     private character: EstuaryCharacter | null = null;
     private microphone: EstuaryMicrophone | null = null;
-    private audioPlayer: EstuaryAudioPlayer | null = null;
+    private dynamicAudioOutput: DynamicAudioOutput | null = null;
     private playerId: string = "";
     private updateEvent: SceneEvent | null = null;
+    private audioInitialized: boolean = false;
     
     // ==================== Lifecycle ====================
     
@@ -156,20 +174,30 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         // Create the character
         this.character = new EstuaryCharacter(this.characterId, this.playerId);
         
-        // Set up audio player for voice responses
-        if (this.audioOutput) {
-            const outputControl = (this.audioOutput as any).control as AudioOutputControl;
-            if (outputControl) {
-                this.audioPlayer = new EstuaryAudioPlayer(outputControl);
-                this.audioPlayer.debugLogging = this.debugMode;
-                this.character.audioPlayer = this.audioPlayer;
-                print("[SimpleAutoConnect] ✅ Audio player configured for voice playback");
+        // Set up DynamicAudioOutput for voice responses (Snap's recommended approach)
+        if (this.dynamicAudioOutputObject) {
+            // Find DynamicAudioOutput component on the SceneObject
+            const componentCount = this.dynamicAudioOutputObject.getComponentCount("Component.ScriptComponent");
+            for (let i = 0; i < componentCount; i++) {
+                const scriptComp = this.dynamicAudioOutputObject.getComponentByIndex("Component.ScriptComponent", i) as any;
+                if (scriptComp && typeof scriptComp.initialize === 'function' && typeof scriptComp.addAudioFrame === 'function') {
+                    this.dynamicAudioOutput = scriptComp as DynamicAudioOutput;
+                    break;
+                }
+            }
+            
+            if (this.dynamicAudioOutput) {
+                // Initialize with sample rate - this starts the AudioComponent
+                this.dynamicAudioOutput.initialize(this.audioSampleRate);
+                this.audioInitialized = true;
+                print(`[SimpleAutoConnect] ✅ DynamicAudioOutput configured (${this.audioSampleRate}Hz)`);
             } else {
-                print("[SimpleAutoConnect] ⚠️ WARNING: Could not get control from audioOutput asset");
+                print("[SimpleAutoConnect] ⚠️ WARNING: Could not find DynamicAudioOutput script on object");
+                print("[SimpleAutoConnect] Make sure the DynamicAudioOutput script is attached");
             }
         } else {
-            print("[SimpleAutoConnect] ⚠️ WARNING: No audioOutput configured - voice responses won't be played");
-            print("[SimpleAutoConnect] Add 'Audio Track' asset: Asset Browser → '+' → Audio → Audio Track");
+            print("[SimpleAutoConnect] ⚠️ WARNING: No dynamicAudioOutputObject configured - voice responses won't be played");
+            print("[SimpleAutoConnect] Add DynamicAudioOutput script to a SceneObject and connect it");
         }
         
         // Create microphone with immediate streaming (lowest latency)
@@ -281,9 +309,9 @@ export class SimpleAutoConnect extends BaseScriptComponent {
             this.microphone.dispose();
             this.microphone = null;
         }
-        if (this.audioPlayer) {
-            this.audioPlayer.stopPlayback();
-            this.audioPlayer = null;
+        if (this.dynamicAudioOutput) {
+            this.dynamicAudioOutput.interruptAudioOutput();
+            this.dynamicAudioOutput = null;
         }
         if (this.character) {
             this.character.dispose();
@@ -325,10 +353,25 @@ export class SimpleAutoConnect extends BaseScriptComponent {
             }
         });
         
-        // AI voice response (audio)
-        this.character.on('voiceReceived', (data: any) => {
+        // AI voice response (audio) - play using DynamicAudioOutput
+        this.character.on('voiceReceived', (voice: BotVoice) => {
             if (this.debugMode) {
-                this.log(`Voice audio received: ${data.audio?.length || 0} chars base64`);
+                this.log(`Voice audio received: ${voice.audio?.length || 0} chars base64, chunk ${voice.chunkIndex}`);
+            }
+            
+            // Play audio using DynamicAudioOutput (hardware-compatible)
+            if (this.dynamicAudioOutput && voice.audio && voice.audio.length > 0) {
+                // Decode base64 to PCM16 bytes using native Lens Studio Base64
+                const pcmBytes = Base64.decode(voice.audio);
+                this.dynamicAudioOutput.addAudioFrame(pcmBytes, 1);
+            }
+        });
+        
+        // Handle interrupts - stop audio when user starts speaking
+        this.character.on('interrupt', () => {
+            if (this.dynamicAudioOutput) {
+                this.dynamicAudioOutput.interruptAudioOutput();
+                this.log("Audio interrupted");
             }
         });
         
@@ -364,10 +407,8 @@ export class SimpleAutoConnect extends BaseScriptComponent {
             }
         }
         
-        // Process audio playback every frame
-        if (this.audioPlayer) {
-            this.audioPlayer.processAudioFrame();
-        }
+        // Note: DynamicAudioOutput doesn't need per-frame processing
+        // It handles audio playback internally via native AudioComponent
     }
     
     // ==================== Public Methods ====================

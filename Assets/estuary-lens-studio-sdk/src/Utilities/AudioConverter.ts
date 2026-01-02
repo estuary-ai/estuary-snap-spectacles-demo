@@ -186,7 +186,25 @@ export function normalize(samples: Float32Array, targetPeak: number = 0.95): Flo
     return normalized;
 }
 
+/**
+ * Encode Float32Array audio samples to Base64 string (as 16-bit PCM).
+ * Uses Lens Studio's native Base64 encoder for hardware compatibility.
+ * @param samples Audio samples as Float32Array
+ * @returns Base64 encoded PCM16 audio string
+ */
+export function encodeAudioToBase64(samples: Float32Array): string {
+    const pcmBytes = floatToPCM16(samples);
+    return Base64.encode(pcmBytes);
+}
 
-
-
+/**
+ * Decode Base64 audio string (16-bit PCM) to Float32Array samples.
+ * Uses Lens Studio's native Base64 decoder for hardware compatibility.
+ * @param base64 Base64 encoded PCM16 audio string
+ * @returns Audio samples as Float32Array
+ */
+export function decodeBase64ToAudio(base64: string): Float32Array {
+    const pcmBytes = Base64.decode(base64);
+    return pcm16ToFloat(pcmBytes);
+}
 

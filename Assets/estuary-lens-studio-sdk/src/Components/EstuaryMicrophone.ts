@@ -11,8 +11,7 @@
  */
 
 import { EstuaryCharacter, IEstuaryMicrophoneController } from './EstuaryCharacter';
-import { encodeAudio } from '../Utilities/Base64Helper';
-import { calculateRMS, resample, DEFAULT_RECORD_SAMPLE_RATE } from '../Utilities/AudioConverter';
+import { calculateRMS, resample, floatToPCM16, DEFAULT_RECORD_SAMPLE_RATE } from '../Utilities/AudioConverter';
 import { EventEmitter } from '../Core/EstuaryEvents';
 
 /**
@@ -454,56 +453,13 @@ export class EstuaryMicrophone
     /**
      * Send audio chunk from event-based recording.
      */
+    /**
+     * Send audio chunk from event-based recording.
+     * Delegates to the unified sendAudioToBackend method.
+     */
     private sendAudioChunkEvent(samples: Float32Array): void {
-        if (!this._targetCharacter || !this._targetCharacter.isConnected) {
-            return;
-        }
-        
-        // Throttling: only send if enough time has passed since last send
-        const now = Date.now();
-        if (now - this._lastSendTime < this._minSendIntervalMs) {
-            // Accumulate samples if we're throttling
-            if (!this._pendingAudioBuffer) {
-                this._pendingAudioBuffer = samples;
-            } else {
-                // Combine pending buffer with new samples
-                const combined = new Float32Array(this._pendingAudioBuffer.length + samples.length);
-                combined.set(this._pendingAudioBuffer, 0);
-                combined.set(samples, this._pendingAudioBuffer.length);
-                this._pendingAudioBuffer = combined;
-            }
-            return;
-        }
-        
-        // Get samples to send (including any pending)
-        let audioToSend = samples;
-        if (this._pendingAudioBuffer && this._pendingAudioBuffer.length > 0) {
-            const combined = new Float32Array(this._pendingAudioBuffer.length + samples.length);
-            combined.set(this._pendingAudioBuffer, 0);
-            combined.set(samples, this._pendingAudioBuffer.length);
-            audioToSend = combined;
-            this._pendingAudioBuffer = null;
-        }
-        
-        // Convert to PCM16 and Base64
-        const base64Audio = encodeAudio(audioToSend);
-        
-        // Send to character
-        this._targetCharacter.streamAudio(base64Audio);
-        this._lastSendTime = now;
-        
-        // Log first chunk
-        if (!this._chunksSent || this._chunksSent === 0) {
-            this._chunksSent = 1;
-            print(`[EstuaryMicrophone] ✅ First audio chunk sent (event-based): ${audioToSend.length} samples @ ${this._sampleRate}Hz, base64 length=${base64Audio.length}`);
-        } else {
-            this._chunksSent++;
-        }
-        
-        // Stats logging
-        if (this._debugLogging && this._chunksSent % 20 === 0) {
-            print(`[EstuaryMicrophone] Stats: sent=${this._chunksSent}, volume=${this._currentVolume.toFixed(4)}`);
-        }
+        // Event-based recording doesn't need resampling - MicrophoneRecorder handles it
+        this.sendAudioToBackend(samples, false, 'event-based');
     }
 
     /**
@@ -816,7 +772,27 @@ export class EstuaryMicrophone
     private _chunksSent: number = 0;
     private _chunksWithAudio: number = 0;
     
+    /**
+     * Send audio chunk from polling-based recording.
+     * Delegates to the unified sendAudioToBackend method with resampling enabled.
+     */
     private sendAudioChunk(samples: Float32Array): void {
+        // Polling-based recording may need resampling if input rate differs from target
+        const needsResampling = this._inputSampleRate !== this._sampleRate;
+        const mode = this._generateTestTone ? 'TEST TONE' : 'microphone';
+        this.sendAudioToBackend(samples, needsResampling, mode);
+    }
+    
+    /**
+     * Unified method for sending audio to the backend.
+     * Handles throttling, buffering, resampling, and Base64 encoding.
+     * Uses native Lens Studio Base64 class for hardware compatibility.
+     * 
+     * @param samples - Audio samples to send
+     * @param needsResampling - Whether to resample from _inputSampleRate to _sampleRate
+     * @param mode - Mode string for logging (e.g., 'event-based', 'microphone', 'TEST TONE')
+     */
+    private sendAudioToBackend(samples: Float32Array, needsResampling: boolean, mode: string): void {
         if (!this._targetCharacter || !this._targetCharacter.isConnected) {
             if (this._debugLogging && this._chunksSent === 0) {
                 print(`[EstuaryMicrophone] Not connected, skipping audio chunk`);
@@ -824,9 +800,9 @@ export class EstuaryMicrophone
             return;
         }
 
-        // Resample if input sample rate differs from target (16kHz for Deepgram)
+        // Resample if needed (only for polling-based recording)
         let audioToSend = samples;
-        if (this._inputSampleRate !== this._sampleRate) {
+        if (needsResampling && this._inputSampleRate !== this._sampleRate) {
             audioToSend = resample(samples, this._inputSampleRate, this._sampleRate);
             // Only log first resample
             if (this._chunksSent === 0) {
@@ -874,15 +850,15 @@ export class EstuaryMicrophone
             this._pendingAudioBuffer = null;
         }
         
-        // Convert to Base64 PCM16
-        const base64Audio = encodeAudio(finalAudio);
+        // Convert to Base64 PCM16 using native Lens Studio Base64
+        const pcmBytes = floatToPCM16(finalAudio);
+        const base64Audio = Base64.encode(pcmBytes);
         
         this._chunksSent++;
         this._lastSendTime = now;
         
         // Log first chunk to confirm audio is being sent
         if (this._chunksSent === 1) {
-            const mode = this._generateTestTone ? 'TEST TONE' : 'microphone';
             print(`[EstuaryMicrophone] ✅ First audio chunk sent (${mode}): ${finalAudio.length} samples @ ${this._sampleRate}Hz, base64 length=${base64Audio.length}`);
         }
         

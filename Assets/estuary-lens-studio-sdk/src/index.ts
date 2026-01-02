@@ -17,6 +17,7 @@ export * from './Components/EstuaryManager';
 export * from './Components/EstuaryCharacter';
 export * from './Components/EstuaryAudioPlayer';
 export * from './Components/EstuaryMicrophone';
+export * from './Components/DynamicAudioOutput';
 
 // Model exports
 export * from './Models/SessionInfo';
@@ -27,7 +28,7 @@ export * from './Models/InterruptData';
 
 // Utility exports
 export * from './Utilities/AudioConverter';
-export * from './Utilities/Base64Helper';
+// Note: Base64Helper is deprecated - use native Base64.encode/decode or encodeAudioToBase64/decodeBase64ToAudio from AudioConverter
 
 // Version
 export const VERSION = '1.0.0';

@@ -15,9 +15,8 @@ export * from './Core/EstuaryEvents';
 // Component exports
 export * from './Components/EstuaryManager';
 export * from './Components/EstuaryCharacter';
-export * from './Components/EstuaryAudioPlayer';
 export * from './Components/EstuaryMicrophone';
-export * from './Components/DynamicAudioOutput';
+// Note: Use DynamicAudioOutput from RemoteServiceGateway.lspkg for audio playback
 
 // Model exports
 export * from './Models/SessionInfo';
@@ -28,7 +27,6 @@ export * from './Models/InterruptData';
 
 // Utility exports
 export * from './Utilities/AudioConverter';
-// Note: Base64Helper is deprecated - use native Base64.encode/decode or encodeAudioToBase64/decodeBase64ToAudio from AudioConverter
 
 // Version
 export const VERSION = '1.0.0';

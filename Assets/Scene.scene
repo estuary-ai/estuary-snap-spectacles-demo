@@ -234,24 +234,6 @@
   ScriptTypes:
     "":
       {}
-- !<ScriptComponent/7caf89dd-e96c-4c26-a11e-22c80f67071d>
-  PrefabRemaps:
-    []
-  Name: EstuaryVoiceChat
-  Enabled: false
-  ScriptAsset: !<reference> 4fee42ee-9147-455a-89f4-a1ae4f00c4b2
-  ScriptInputsDefault:
-    displayText: true
-  ScriptTypesDefault:
-    {}
-  ScriptInputs:
-    "":
-      audioOutput: !<reference.AudioTrackAsset> 94196bba-1fc1-422d-8c75-104d578155a6
-      audioInput: !<reference.AudioTrackAsset> 683b71a5-7d79-421d-9f72-238a7221025b
-      displayText: !<reference.Text> 00000000-0000-0000-0000-000000000000
-  ScriptTypes:
-    "":
-      {}
 - !<ScriptComponent/93e405d7-7180-4c11-870d-461caad2969c>
   PrefabRemaps:
     []
@@ -260,20 +242,16 @@
   ScriptAsset: !<reference> e780724e-9de7-464c-a83b-7cdf30c6fbc0
   ScriptInputsDefault:
     debugMode: true
-    useTestTone: true
   ScriptTypesDefault:
     {}
   ScriptInputs:
     "":
-      serverUrl: "wss://api.estuary-ai.com"
+      apiKey: est_wpWw1h-Ggf9ZXp1-K-NarJ32GzrHG16fdK6karqDJ3I
       characterId: 8707971d-fe8a-47c6-aad9-7ba6a65848dd
       microphoneRecorderObject: !<reference.SceneObject> c7d04291-fc00-4f58-bb6b-19aed41857c0
-      microphoneAudio: !<reference.AudioTrackAsset> 683b71a5-7d79-421d-9f72-238a7221025b
-      apiKey: est_wpWw1h-Ggf9ZXp1-K-NarJ32GzrHG16fdK6karqDJ3I
-      debugMode: true
-      useTestTone: false
+      dynamicAudioOutputObject: !<reference.SceneObject> 6dd1fcec-f498-43dc-9e18-7b0af1826c32
       internetModule: !<reference.InternetModule> 526d4deb-e562-4800-87e2-98140b398ecb
-      audioOutput: !<reference.AudioTrackAsset> 94196bba-1fc1-422d-8c75-104d578155a6
+      debugMode: true
   ScriptTypes:
     "":
       {}
@@ -289,10 +267,9 @@
     Scale: {x: 1.000000, y: 1.000000, z: 1.000000}
     HasSegmentScaleCompensation: false
   Children:
-    - !<own> 6dd1fcec-f498-43dc-9e18-7b0af1826c32
     - !<own> c7d04291-fc00-4f58-bb6b-19aed41857c0
+    - !<own> 6dd1fcec-f498-43dc-9e18-7b0af1826c32
   Components:
-    - !<own> 7caf89dd-e96c-4c26-a11e-22c80f67071d
     - !<own> 93e405d7-7180-4c11-870d-461caad2969c
 - !<SceneObject/c7d04291-fc00-4f58-bb6b-19aed41857c0>
   PrefabRemaps:

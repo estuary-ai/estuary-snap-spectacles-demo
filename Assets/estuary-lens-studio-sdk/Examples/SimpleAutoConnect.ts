@@ -10,8 +10,8 @@
  * 2. Assign this script to the component
  * 3. Add an InternetModule to your scene and connect it to this script
  * 4. Add a MicrophoneRecorder component (from RemoteServiceGateway.lspkg):
- *    - This is the RECOMMENDED way to capture microphone audio
- *    - Provides event-based audio delivery (works in simulator!)
+ *    - Create a SceneObject with MicrophoneRecorder script
+ *    - Connect the SceneObject to microphoneRecorderObject input
  * 5. Add DynamicAudioOutput for voice playback:
  *    - Create a SceneObject with DynamicAudioOutput script
  *    - Add an AudioComponent to the same SceneObject
@@ -22,16 +22,10 @@
  * 
  * IMPORTANT: Your character must have a voice configured in the Estuary dashboard,
  * otherwise responses will be text-only (no TTS audio).
- * 
- * RECOMMENDED: Use MicrophoneRecorder from RemoteServiceGateway.lspkg
- * This is what the official Gemini voice chat example uses.
- * 
- * Alternative: Use "Audio From Microphone" asset (less reliable in simulator)
  */
 
 import { EstuaryCharacter } from '../src/Components/EstuaryCharacter';
-import { EstuaryMicrophone, MicrophoneAudioProvider, MicrophoneRecorder } from '../src/Components/EstuaryMicrophone';
-import { DynamicAudioOutput } from '../src/Components/DynamicAudioOutput';
+import { EstuaryMicrophone, MicrophoneRecorder } from '../src/Components/EstuaryMicrophone';
 import { EstuaryConfig } from '../src/Core/EstuaryConfig';
 import { setInternetModule } from '../src/Core/EstuaryClient';
 import { SessionInfo } from '../src/Models/SessionInfo';
@@ -39,64 +33,44 @@ import { BotResponse } from '../src/Models/BotResponse';
 import { BotVoice } from '../src/Models/BotVoice';
 import { SttResponse } from '../src/Models/SttResponse';
 
+/**
+ * Interface for DynamicAudioOutput from RemoteServiceGateway.lspkg
+ * This component is attached to a SceneObject in Lens Studio.
+ */
+interface DynamicAudioOutput {
+    initialize(sampleRate: number): void;
+    addAudioFrame(uint8Array: Uint8Array, channels: number): void;
+    interruptAudioOutput(): void;
+}
+
 @component
 export class SimpleAutoConnect extends BaseScriptComponent {
     
     // ==================== Configuration (set in Inspector) ====================
+
+    @input
+    @hint("Generated from your Estuary dashboard")
+    apiKey: string = "[ESTUARY_API_KEY]";
     
     /** Your Estuary server URL */
-    @input
-    @hint("Estuary server WebSocket URL")
-    serverUrl: string = "ws://localhost:4001";
+    serverUrl: string = "wss://api.estuary-ai.com";
     
     /** The character/agent ID to connect to */
     @input
-    @hint("Character/Agent ID from your Estuary backend")
-    characterId: string = "3799f1e4-1b67-426f-a342-65d40afc89e4";
+    @hint("Character/Agent ID from your Estuary dashboard")
+    characterId: string = "[ESTUARY_CHARACTER_ID]";
     
     /** 
-     * RECOMMENDED: MicrophoneRecorder from RemoteServiceGateway.lspkg
-     * This is what the official Gemini voice chat example uses.
+     * MicrophoneRecorder from RemoteServiceGateway.lspkg
+     * This is the REQUIRED way to capture microphone audio in Lens Studio.
      * Provides event-based audio delivery that works reliably.
      * 
      * In Lens Studio: Drag the MicrophoneRecorder SceneObject here,
      * or use the picker to select the SceneObject containing MicrophoneRecorder.
      */
     @input
-    @hint("SceneObject with MicrophoneRecorder script")
+    @hint("SceneObject with MicrophoneRecorder script (REQUIRED)")
     microphoneRecorderObject: SceneObject;
-    
-    /** 
-     * Alternative: Audio From Microphone asset for raw PCM audio access.
-     * Only used if MicrophoneRecorder is not provided.
-     * In Lens Studio: Asset Browser → "+" → Audio → Audio From Microphone
-     */
-    @input
-    @hint("Audio From Microphone asset (fallback if no MicrophoneRecorder)")
-    microphoneAudio: AudioTrackAsset;
-    
-    /** Optional: API key if your server requires it */
-    @input
-    apiKey: string = "est_QZV8LFmvBgq3rBfK39x22aWL_ukR4jd_cH7vBFGr4MU";
-    
-    /** Enable debug logging */
-    @input
-    debugMode: boolean = true;
-    
-    /** 
-     * Generate test tone instead of using microphone.
-     * Enable this when testing in the Lens Studio Simulator,
-     * which doesn't provide real microphone audio.
-     * Generates a 440Hz sine wave for testing audio streaming.
-     */
-    @input
-    @hint("Enable for simulator testing (generates 440Hz test tone)")
-    useTestTone: boolean = false;
-    
-    /** InternetModule for WebSocket connections (required for Lens Studio 5.9+) */
-    @input
-    @hint("Connect the InternetModule from your scene")
-    internetModule: InternetModule;
     
     /** 
      * SceneObject with DynamicAudioOutput script for playing bot voice responses.
@@ -112,14 +86,21 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     @input
     @hint("SceneObject with DynamicAudioOutput script for voice playback")
     dynamicAudioOutputObject: SceneObject;
+
+    /** InternetModule for WebSocket connections (required for Lens Studio 5.9+) */
+    @input
+    @hint("Connect the InternetModule from your scene")
+    internetModule: InternetModule;
     
     /** 
      * Default sample rate for audio playback.
      * ElevenLabs uses 24000Hz, other TTS providers may vary.
      */
-    @input
-    @hint("Sample rate for audio playback (e.g., 24000 for ElevenLabs)")
     audioSampleRate: number = 24000;
+
+    /** Enable debug logging */
+    @input
+    debugMode: boolean = true;
     
     // ==================== Private Members ====================
     
@@ -200,19 +181,9 @@ export class SimpleAutoConnect extends BaseScriptComponent {
             print("[SimpleAutoConnect] Add DynamicAudioOutput script to a SceneObject and connect it");
         }
         
-        // Create microphone with immediate streaming (lowest latency)
+        // Create microphone (VAD is handled by Deepgram backend)
         this.microphone = new EstuaryMicrophone(this.character);
-        this.microphone.streamImmediately = true;  // Send audio as soon as received (default)
-        this.microphone.useVoiceActivityDetection = false; // Backend has Deepgram VAD
         this.microphone.debugLogging = this.debugMode;
-        
-        // Enable test tone for simulator testing
-        // The Lens Studio simulator doesn't stream real microphone audio,
-        // so enable this to generate a 440Hz test tone for testing audio streaming
-        if (this.useTestTone) {
-            this.microphone.generateTestTone = true;
-            this.log("Test tone mode enabled - will generate 440Hz sine wave");
-        }
         
         // Set up microphone - prefer MicrophoneRecorder (event-based, recommended)
         if (this.microphoneRecorderObject) {
@@ -259,33 +230,12 @@ export class SimpleAutoConnect extends BaseScriptComponent {
                 this.character.microphone = this.microphone;
                 print("[SimpleAutoConnect] ✅ MicrophoneRecorder configured successfully");
             } else {
-                print("[SimpleAutoConnect] ⚠️ Could not find MicrophoneRecorder API on any script component");
+                print("[SimpleAutoConnect] ❌ ERROR: Could not find MicrophoneRecorder API on any script component");
                 print("[SimpleAutoConnect] Make sure the MicrophoneRecorder script is attached to this object");
             }
-        } 
-        // Fallback: Use Audio From Microphone asset (polling-based)
-        else if (this.microphoneAudio) {
-            // Access the audio provider from the Audio From Microphone asset
-            const audioProvider = (this.microphoneAudio as any).audioProvider as MicrophoneAudioProvider;
-            if (audioProvider) {
-                this.microphone.setMicrophoneProvider(audioProvider);
-                this.character.microphone = this.microphone;
-                print("[SimpleAutoConnect] Using fallback: MicrophoneAudioProvider (polling-based)");
-            } else {
-                // Fallback: try accessing control property
-                const control = (this.microphoneAudio as any).control;
-                if (control) {
-                    this.microphone.setAudioInput(control);
-                    this.character.microphone = this.microphone;
-                    print("[SimpleAutoConnect] Using fallback: microphoneAudio.control");
-                } else {
-                    print("[SimpleAutoConnect] ⚠️ WARNING: Could not get audio provider from microphoneAudio");
-                }
-            }
         } else {
-            print("[SimpleAutoConnect] ⚠️ WARNING: No microphone input configured!");
-            print("[SimpleAutoConnect] RECOMMENDED: Add MicrophoneRecorder from RemoteServiceGateway.lspkg");
-            print("[SimpleAutoConnect] Alternative: Add 'Audio From Microphone' asset");
+            print("[SimpleAutoConnect] ❌ ERROR: No microphoneRecorderObject configured!");
+            print("[SimpleAutoConnect] Add MicrophoneRecorder from RemoteServiceGateway.lspkg to your scene");
         }
         
         // Set up event handlers
@@ -398,17 +348,8 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     // ==================== Update Loop ====================
     
     private onUpdate(): void {
-        // Process microphone audio every frame (only needed for polling-based recording)
-        // MicrophoneRecorder uses event-based delivery, so this is a no-op when using it
-        if (this.microphone && this.microphone.isRecording) {
-            // Only process if NOT using event-based MicrophoneRecorder
-            if (!this.microphoneRecorderObject) {
-                this.microphone.processAudioFrame(1024);
-            }
-        }
-        
-        // Note: DynamicAudioOutput doesn't need per-frame processing
-        // It handles audio playback internally via native AudioComponent
+        // MicrophoneRecorder uses event-based delivery, no per-frame processing needed
+        // DynamicAudioOutput handles audio playback internally via native AudioComponent
     }
     
     // ==================== Public Methods ====================

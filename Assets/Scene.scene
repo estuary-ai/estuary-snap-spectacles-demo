@@ -5,7 +5,6 @@
     - !<own> 0005641c-028d-459a-0000-000000014b4d
     - !<own> 354d79a7-4024-46f7-a448-782736528c27
     - !<own> ab344148-bd6f-4c66-b3cd-5913efb971e2
-    - !<own> 3548426a-ee2b-4d32-a093-769975b9c8b4
     - !<own> e2ade54d-1248-4d82-83f0-f4763cac33d7
   layers: !<Layers/267ee9a7-aff2-4f9d-9a49-f71214747d03>
     userLayers:
@@ -173,21 +172,6 @@
   DecayType: None
   DecayLimit: false
   DecayRange: 40.000000
-- !<SceneObject/3548426a-ee2b-4d32-a093-769975b9c8b4>
-  PrefabRemaps:
-    []
-  Name: EstuaryActionManager
-  Enabled: true
-  Layers: 1
-  LocalTransform: !<TransformEntity>
-    Position: {x: 0.000000, y: 0.000000, z: 0.000000}
-    Rotation: {x: 0.000000, y: 0.000000, z: 0.000000}
-    Scale: {x: 1.000000, y: 1.000000, z: 1.000000}
-    HasSegmentScaleCompensation: false
-  Children:
-    []
-  Components:
-    - !<own> e17ef96b-6399-4d92-8953-153190b5d018
 - !<SceneObject/354d79a7-4024-46f7-a448-782736528c27>
   PrefabRemaps:
     []
@@ -337,25 +321,6 @@
     []
   Components:
     - !<own> 5c197bd5-db46-42ce-87b9-e7e390f5bb89
-- !<ScriptComponent/e17ef96b-6399-4d92-8953-153190b5d018>
-  PrefabRemaps:
-    []
-  Name: EstuaryActionManager
-  Enabled: true
-  ScriptAsset: !<reference> af1c29fb-fd7e-4fb4-a073-e3a36fdfc7c9
-  ScriptInputsDefault:
-    strictMode: true
-    debugMode: true
-  ScriptTypesDefault:
-    {}
-  ScriptInputs:
-    "":
-      credentialsObject: !<reference.SceneObject> 354d79a7-4024-46f7-a448-782736528c27
-      strictMode: false
-      debugMode: false
-  ScriptTypes:
-    "":
-      {}
 - !<SceneObject/e2ade54d-1248-4d82-83f0-f4763cac33d7>
   PrefabRemaps:
     []

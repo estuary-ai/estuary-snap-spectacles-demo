@@ -27,8 +27,7 @@
 import { EstuaryCharacter } from '../src/Components/EstuaryCharacter';
 import { EstuaryMicrophone, MicrophoneRecorder } from '../src/Components/EstuaryMicrophone';
 import { EstuaryCredentials, IEstuaryCredentials, getCredentialsFromSceneObject } from '../src/Components/EstuaryCredentials';
-import { EstuaryActionManager } from '../src/Components/EstuaryActionManager';
-import { EstuaryActionReceiver } from '../src/Components/EstuaryActionReceiver';
+import { EstuaryActionManager, EstuaryActions } from '../src/Components/EstuaryActionManager';
 import { EstuaryConfig } from '../src/Core/EstuaryConfig';
 import { setInternetModule } from '../src/Core/EstuaryClient';
 import { SessionInfo } from '../src/Models/SessionInfo';
@@ -196,9 +195,10 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         this.actionManager.setCredentials(this.credentials);
         this.actionManager.debugLogging = this.credentials.debugMode;
         
-        // Make this the shared manager so EstuaryActionReceiver components can use it
-        EstuaryActionReceiver.setSharedManager(this.actionManager);
-        this.log("Action manager configured");
+        // Set up global action events - any script can now use EstuaryActions.on()
+        EstuaryActions.setManager(this.actionManager);
+        
+        this.log("Action manager configured - EstuaryActions global events ready");
         
         // Set up DynamicAudioOutput for voice responses (Snap's recommended approach)
         if (this.dynamicAudioOutputObject) {

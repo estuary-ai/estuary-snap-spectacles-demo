@@ -903,3 +903,173 @@ export class EstuaryActionManagerComponent extends BaseScriptComponent {
         }
     }
 }
+
+// ============================================================================
+// GLOBAL ACTION EVENTS - Easy access from any script
+// ============================================================================
+
+/**
+ * Global action event system for the Estuary SDK.
+ * 
+ * This provides a simple, Unity-like event system where any script can
+ * subscribe to action events without needing component references.
+ * 
+ * Usage from any script:
+ * ```typescript
+ * import { EstuaryActions } from 'estuary-lens-studio-sdk';
+ * 
+ * // Subscribe to a specific action
+ * EstuaryActions.on("sit", (action) => {
+ *     print("Character should sit!");
+ *     // Play sit animation, change state, etc.
+ * });
+ * 
+ * // Subscribe to all actions
+ * EstuaryActions.onAny((action) => {
+ *     print(`Action triggered: ${action.name}`);
+ * });
+ * 
+ * // Unsubscribe when done
+ * const unsubscribe = EstuaryActions.on("wave", handler);
+ * unsubscribe(); // Stop listening
+ * ```
+ */
+export class EstuaryActions {
+    private static _manager: EstuaryActionManager | null = null;
+    private static _pendingSubscriptions: Array<{
+        type: 'specific' | 'any';
+        actionName?: string;
+        handler: (action: ParsedAction) => void;
+        unsubscribe?: () => void;
+    }> = [];
+    
+    /**
+     * Set the action manager instance (called internally by SimpleAutoConnect).
+     * @internal
+     */
+    static setManager(manager: EstuaryActionManager): void {
+        EstuaryActions._manager = manager;
+        print(`[EstuaryActions] Manager set - processing ${EstuaryActions._pendingSubscriptions.length} pending subscription(s)`);
+        
+        // Process any pending subscriptions
+        for (const sub of EstuaryActions._pendingSubscriptions) {
+            if (sub.type === 'any') {
+                sub.unsubscribe = manager.onAnyAction(sub.handler);
+            } else if (sub.actionName) {
+                sub.unsubscribe = manager.onAction(sub.actionName, sub.handler);
+            }
+        }
+    }
+    
+    /**
+     * Get the current action manager instance.
+     */
+    static getManager(): EstuaryActionManager | null {
+        return EstuaryActions._manager;
+    }
+    
+    /**
+     * Subscribe to a specific action by name.
+     * 
+     * @param actionName The action name to listen for (e.g., "sit", "wave")
+     * @param handler Callback when the action is triggered
+     * @returns Unsubscribe function
+     * 
+     * @example
+     * ```typescript
+     * EstuaryActions.on("sit", (action) => {
+     *     print("Character is sitting!");
+     * });
+     * ```
+     */
+    static on(actionName: string, handler: (action: ParsedAction) => void): () => void {
+        const sub = {
+            type: 'specific' as const,
+            actionName,
+            handler,
+            unsubscribe: undefined as (() => void) | undefined
+        };
+        
+        if (EstuaryActions._manager) {
+            sub.unsubscribe = EstuaryActions._manager.onAction(actionName, handler);
+        } else {
+            // Queue for when manager is set
+            EstuaryActions._pendingSubscriptions.push(sub);
+            print(`[EstuaryActions] Queued subscription for action '${actionName}' (manager not ready)`);
+        }
+        
+        return () => {
+            if (sub.unsubscribe) {
+                sub.unsubscribe();
+            }
+            // Remove from pending
+            const index = EstuaryActions._pendingSubscriptions.indexOf(sub);
+            if (index > -1) {
+                EstuaryActions._pendingSubscriptions.splice(index, 1);
+            }
+        };
+    }
+    
+    /**
+     * Subscribe to ALL actions.
+     * 
+     * @param handler Callback when any action is triggered
+     * @returns Unsubscribe function
+     * 
+     * @example
+     * ```typescript
+     * EstuaryActions.onAny((action) => {
+     *     print(`Action: ${action.name}`);
+     * });
+     * ```
+     */
+    static onAny(handler: (action: ParsedAction) => void): () => void {
+        const sub = {
+            type: 'any' as const,
+            handler,
+            unsubscribe: undefined as (() => void) | undefined
+        };
+        
+        if (EstuaryActions._manager) {
+            sub.unsubscribe = EstuaryActions._manager.onAnyAction(handler);
+        } else {
+            // Queue for when manager is set
+            EstuaryActions._pendingSubscriptions.push(sub);
+            print("[EstuaryActions] Queued subscription for all actions (manager not ready)");
+        }
+        
+        return () => {
+            if (sub.unsubscribe) {
+                sub.unsubscribe();
+            }
+            // Remove from pending
+            const index = EstuaryActions._pendingSubscriptions.indexOf(sub);
+            if (index > -1) {
+                EstuaryActions._pendingSubscriptions.splice(index, 1);
+            }
+        };
+    }
+    
+    /**
+     * Check if an action was recently triggered.
+     * @param actionName The action name to check
+     */
+    static wasTriggered(actionName: string): boolean {
+        if (!EstuaryActions._manager) return false;
+        return EstuaryActions._manager.currentAction?.name === actionName;
+    }
+    
+    /**
+     * Get the most recently triggered action.
+     */
+    static get currentAction(): ParsedAction | null {
+        return EstuaryActions._manager?.currentAction || null;
+    }
+    
+    /**
+     * Get all actions triggered in the current session.
+     */
+    static get actionHistory(): ReadonlyArray<ParsedAction> {
+        return EstuaryActions._manager?.actionHistory || [];
+    }
+}

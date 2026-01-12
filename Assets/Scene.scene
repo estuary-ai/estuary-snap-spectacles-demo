@@ -359,7 +359,7 @@
 - !<SceneObject/e2ade54d-1248-4d82-83f0-f4763cac33d7>
   PrefabRemaps:
     []
-  Name: Object 0
+  Name: Example Character
   Enabled: true
   Layers: 1
   LocalTransform: !<TransformEntity>

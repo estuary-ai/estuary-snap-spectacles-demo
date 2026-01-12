@@ -26,6 +26,9 @@
 
 import { EstuaryCharacter } from '../src/Components/EstuaryCharacter';
 import { EstuaryMicrophone, MicrophoneRecorder } from '../src/Components/EstuaryMicrophone';
+import { EstuaryCredentials, IEstuaryCredentials, getCredentialsFromSceneObject } from '../src/Components/EstuaryCredentials';
+import { EstuaryActionManager } from '../src/Components/EstuaryActionManager';
+import { EstuaryActionReceiver } from '../src/Components/EstuaryActionReceiver';
 import { EstuaryConfig } from '../src/Core/EstuaryConfig';
 import { setInternetModule } from '../src/Core/EstuaryClient';
 import { SessionInfo } from '../src/Models/SessionInfo';
@@ -48,17 +51,17 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     
     // ==================== Configuration (set in Inspector) ====================
 
+    /**
+     * Reference to the EstuaryCredentials SceneObject.
+     * This contains your API key, character ID, and other settings.
+     * Create a SceneObject with EstuaryCredentials script and drag it here.
+     */
     @input
-    @hint("Generated from your Estuary dashboard")
-    apiKey: string = "[ESTUARY_API_KEY]";
+    @hint("SceneObject with EstuaryCredentials script (contains API key & character ID)")
+    credentialsObject: SceneObject;
     
-    /** Your Estuary server URL */
-    serverUrl: string = "wss://api.estuary-ai.com";
-    
-    /** The character/agent ID to connect to */
-    @input
-    @hint("Character/Agent ID from your Estuary dashboard")
-    characterId: string = "[ESTUARY_CHARACTER_ID]";
+    /** Cached credentials reference */
+    private credentials: IEstuaryCredentials | null = null;
     
     /** 
      * MicrophoneRecorder from RemoteServiceGateway.lspkg
@@ -98,14 +101,12 @@ export class SimpleAutoConnect extends BaseScriptComponent {
      */
     audioSampleRate: number = 24000;
 
-    /** Enable debug logging */
-    @input
-    debugMode: boolean = true;
     
     // ==================== Private Members ====================
     
     private character: EstuaryCharacter | null = null;
     private microphone: EstuaryMicrophone | null = null;
+    private actionManager: EstuaryActionManager | null = null;
     private dynamicAudioOutput: DynamicAudioOutput | null = null;
     private playerId: string = "";
     private updateEvent: SceneEvent | null = null;
@@ -115,6 +116,14 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     
     onAwake() {
         this.log("Initializing...");
+        
+        // Get credentials from the referenced SceneObject or singleton
+        this.credentials = this.getCredentials();
+        if (!this.credentials) {
+            print("[SimpleAutoConnect] ERROR: No EstuaryCredentials found!");
+            print("[SimpleAutoConnect] Either set credentialsObject input OR add EstuaryCredentials to your scene");
+            return;
+        }
         
         // Set up InternetModule for WebSocket connections (required for Lens Studio 5.9+)
         if (this.internetModule) {
@@ -138,6 +147,28 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         (delayedEvent as any).reset(0.5);
     }
     
+    /**
+     * Get credentials from the referenced SceneObject or singleton.
+     */
+    private getCredentials(): IEstuaryCredentials | null {
+        // First try the input SceneObject
+        if (this.credentialsObject) {
+            const creds = getCredentialsFromSceneObject(this.credentialsObject);
+            if (creds) {
+                this.log("Using credentials from credentialsObject input");
+                return creds;
+            }
+        }
+        
+        // Fall back to singleton
+        if (EstuaryCredentials.hasInstance) {
+            this.log("Using credentials from EstuaryCredentials singleton");
+            return EstuaryCredentials.instance;
+        }
+        
+        return null;
+    }
+    
     onDestroy() {
         this.disconnect();
     }
@@ -145,15 +176,29 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     // ==================== Connection ====================
     
     private connect(): void {
-        if (!this.characterId) {
+        if (!this.credentials) {
+            print("[SimpleAutoConnect] ERROR: No credentials available!");
+            return;
+        }
+        
+        if (!this.credentials.characterId) {
             print("[SimpleAutoConnect] ERROR: characterId is required!");
             return;
         }
         
-        this.log(`Connecting to ${this.serverUrl}...`);
+        this.log(`Connecting to ${this.credentials.serverUrl}...`);
         
         // Create the character
-        this.character = new EstuaryCharacter(this.characterId, this.playerId);
+        this.character = new EstuaryCharacter(this.credentials.characterId, this.playerId);
+        
+        // Set up action manager for parsing action tags from responses
+        this.actionManager = new EstuaryActionManager(this.character);
+        this.actionManager.setCredentials(this.credentials);
+        this.actionManager.debugLogging = this.credentials.debugMode;
+        
+        // Make this the shared manager so EstuaryActionReceiver components can use it
+        EstuaryActionReceiver.setSharedManager(this.actionManager);
+        this.log("Action manager configured");
         
         // Set up DynamicAudioOutput for voice responses (Snap's recommended approach)
         if (this.dynamicAudioOutputObject) {
@@ -183,7 +228,7 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         
         // Create microphone (VAD is handled by Deepgram backend)
         this.microphone = new EstuaryMicrophone(this.character);
-        this.microphone.debugLogging = this.debugMode;
+        this.microphone.debugLogging = this.credentials!.debugMode;
         
         // Set up microphone - prefer MicrophoneRecorder (event-based, recommended)
         if (this.microphoneRecorderObject) {
@@ -243,11 +288,11 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         
         // Connect
         const config: EstuaryConfig = {
-            serverUrl: this.serverUrl,
-            apiKey: this.apiKey,
-            characterId: this.characterId,
+            serverUrl: this.credentials!.serverUrl,
+            apiKey: this.credentials!.apiKey,
+            characterId: this.credentials!.characterId,
             playerId: this.playerId,
-            debugLogging: this.debugMode
+            debugLogging: this.credentials!.debugMode
         };
         
         this.character.initialize(config);
@@ -258,6 +303,10 @@ export class SimpleAutoConnect extends BaseScriptComponent {
             this.microphone.stopRecording();
             this.microphone.dispose();
             this.microphone = null;
+        }
+        if (this.actionManager) {
+            this.actionManager.dispose();
+            this.actionManager = null;
         }
         if (this.dynamicAudioOutput) {
             this.dynamicAudioOutput.interruptAudioOutput();
@@ -305,7 +354,7 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         
         // AI voice response (audio) - play using DynamicAudioOutput
         this.character.on('voiceReceived', (voice: BotVoice) => {
-            if (this.debugMode) {
+            if (this.credentials?.debugMode) {
                 this.log(`Voice audio received: ${voice.audio?.length || 0} chars base64, chunk ${voice.chunkIndex}`);
             }
             
@@ -361,10 +410,20 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         }
     }
     
+    /** Get the action manager for subscribing to actions */
+    getActionManager(): EstuaryActionManager | null {
+        return this.actionManager;
+    }
+    
+    /** Get the character instance */
+    getCharacter(): EstuaryCharacter | null {
+        return this.character;
+    }
+    
     // ==================== Utility ====================
     
     private log(message: string): void {
-        if (this.debugMode) {
+        if (this.credentials?.debugMode) {
             print(`[SimpleAutoConnect] ${message}`);
         }
     }

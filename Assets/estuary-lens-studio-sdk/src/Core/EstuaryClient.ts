@@ -546,6 +546,9 @@ export class EstuaryClient extends EventEmitter<any> {
             case 'error':
                 this.handleServerError(data);
                 break;
+            case 'quota_exceeded':
+                this.handleQuotaExceeded(data);
+                break;
             default:
                 this.log(`Unhandled event: ${eventName}`);
         }
@@ -619,6 +622,11 @@ export class EstuaryClient extends EventEmitter<any> {
         const errorMsg = data?.message || data?.error || 'Server error';
         this.logError(`Server error: ${errorMsg}`);
         this.emit('error', errorMsg);
+    }
+
+    private handleQuotaExceeded(data: any): void {
+        const message = data?.message || 'API quota exceeded';
+        this.logError(`Quota exceeded: ${message}`);
     }
 
     private handleReconnect(): void {

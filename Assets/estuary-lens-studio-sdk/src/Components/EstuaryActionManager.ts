@@ -84,9 +84,6 @@ export class EstuaryActionManager extends EventEmitter<any> {
     /** Registered actions per character ID */
     private _registeredActions: Map<string, Map<string, RegisteredAction>> = new Map();
     
-    /** Global action handlers (for any action) */
-    private _globalActionHandlers: Map<string, Set<(action: ParsedAction) => void>> = new Map();
-    
     /** Whether to only trigger registered actions (false = trigger all actions) */
     private _strictMode: boolean = false;
     
@@ -100,9 +97,6 @@ export class EstuaryActionManager extends EventEmitter<any> {
     
     /** Handler function for botResponse events (stored for cleanup) */
     private _botResponseHandler: ((response: BotResponse) => void) | null = null;
-    
-    /** Cached credentials reference */
-    private _credentials: IEstuaryCredentials | null = null;
     
     // ==================== Constructor ====================
     
@@ -159,26 +153,6 @@ export class EstuaryActionManager extends EventEmitter<any> {
         if (this._actionHistory.length > this._maxHistorySize) {
             this._actionHistory = this._actionHistory.slice(-this._maxHistorySize);
         }
-    }
-    
-    /** Get the credentials (API key, character ID, etc.) */
-    get credentials(): IEstuaryCredentials | null {
-        return this._credentials;
-    }
-    
-    /** Get the API key from credentials */
-    get apiKey(): string {
-        return this._credentials?.apiKey || '';
-    }
-    
-    /** Get the character ID from credentials */
-    get characterId(): string {
-        return this._credentials?.characterId || '';
-    }
-    
-    /** Get the server URL from credentials */
-    get serverUrl(): string {
-        return this._credentials?.serverUrl || '';
     }
     
     /** 
@@ -336,21 +310,15 @@ export class EstuaryActionManager extends EventEmitter<any> {
      */
     onAction(actionName: string, handler: (action: ParsedAction) => void): () => void {
         const lowerName = actionName.toLowerCase();
+        const eventName = `action:${lowerName}`;
         
-        if (!this._globalActionHandlers.has(lowerName)) {
-            this._globalActionHandlers.set(lowerName, new Set());
-        }
-        
-        this._globalActionHandlers.get(lowerName)!.add(handler);
+        this.on(eventName, handler);
         this.log(`Subscribed to action '${actionName}'`);
         
         // Return unsubscribe function
         return () => {
-            const handlers = this._globalActionHandlers.get(lowerName);
-            if (handlers) {
-                handlers.delete(handler);
-                this.log(`Unsubscribed from action '${actionName}'`);
-            }
+            this.off(eventName, handler);
+            this.log(`Unsubscribed from action '${actionName}'`);
         };
     }
     
@@ -374,15 +342,22 @@ export class EstuaryActionManager extends EventEmitter<any> {
      * @returns A function to unsubscribe
      */
     onAnyAction(handler: (action: ParsedAction) => void): () => void {
-        return this.onAction('*', handler);
+        this.on('actionTriggered', handler);
+        this.log('Subscribed to all actions');
+        
+        return () => {
+            this.off('actionTriggered', handler);
+            this.log('Unsubscribed from all actions');
+        };
     }
     
     // ==================== Public Methods ====================
     
     /**
      * Set credentials from a SceneObject containing EstuaryCredentials.
+     * Only used to sync debug logging mode.
      * @param sceneObject The SceneObject with EstuaryCredentials script
-     * @returns True if credentials were found and set
+     * @returns True if credentials were found
      */
     setCredentialsFromSceneObject(sceneObject: SceneObject | null): boolean {
         if (!sceneObject) {
@@ -391,9 +366,8 @@ export class EstuaryActionManager extends EventEmitter<any> {
         
         const creds = getCredentialsFromSceneObject(sceneObject);
         if (creds) {
-            this._credentials = creds;
             this._debugLogging = creds.debugMode;
-            this.log('Credentials set from SceneObject');
+            this.log('Credentials found from SceneObject');
             return true;
         }
         
@@ -402,13 +376,13 @@ export class EstuaryActionManager extends EventEmitter<any> {
     
     /**
      * Set credentials from the EstuaryCredentials singleton.
-     * @returns True if credentials were found and set
+     * Only used to sync debug logging mode.
+     * @returns True if credentials were found
      */
     setCredentialsFromSingleton(): boolean {
         if (EstuaryCredentials.hasInstance && EstuaryCredentials.instance) {
-            this._credentials = EstuaryCredentials.instance;
-            this._debugLogging = this._credentials.debugMode;
-            this.log('Credentials set from singleton');
+            this._debugLogging = EstuaryCredentials.instance.debugMode;
+            this.log('Credentials found from singleton');
             return true;
         }
         
@@ -417,10 +391,10 @@ export class EstuaryActionManager extends EventEmitter<any> {
     
     /**
      * Set credentials directly.
+     * Only used to sync debug logging mode.
      * @param credentials The credentials to use
      */
     setCredentials(credentials: IEstuaryCredentials): void {
-        this._credentials = credentials;
         this._debugLogging = credentials.debugMode;
         this.log('Credentials set directly');
     }
@@ -538,7 +512,6 @@ export class EstuaryActionManager extends EventEmitter<any> {
         this.clearHistory();
         this._targetCharacter = null;
         this._registeredActions.clear();
-        this._globalActionHandlers.clear();
         this.removeAllListeners();
     }
     
@@ -608,7 +581,10 @@ export class EstuaryActionManager extends EventEmitter<any> {
         }
         
         // In strict mode, check if action is registered
-        const characterId = this._credentials?.characterId || '*';
+        // Get characterId from singleton when needed
+        const characterId = EstuaryCredentials.hasInstance && EstuaryCredentials.instance
+            ? EstuaryCredentials.instance.characterId || '*'
+            : '*';
         return this.isActionRegistered(characterId, actionName);
     }
     
@@ -618,35 +594,11 @@ export class EstuaryActionManager extends EventEmitter<any> {
     private dispatchAction(action: ParsedAction): void {
         const lowerName = action.name.toLowerCase();
         
-        // 1. Emit on the EventEmitter (for .on('actionTriggered', ...) subscribers)
+        // Emit general action event (for onAnyAction subscribers)
         this.emit('actionTriggered', action);
         
-        // 2. Emit action-specific event (e.g., 'action:sit')
+        // Emit action-specific event (e.g., 'action:sit' for onAction subscribers)
         this.emit(`action:${lowerName}`, action);
-        
-        // 3. Call registered action handlers (from onAction())
-        const handlers = this._globalActionHandlers.get(lowerName);
-        if (handlers) {
-            handlers.forEach(handler => {
-                try {
-                    handler(action);
-                } catch (e) {
-                    this.logError(`Handler error for action '${action.name}': ${e}`);
-                }
-            });
-        }
-        
-        // 4. Call wildcard handlers (onAnyAction)
-        const wildcardHandlers = this._globalActionHandlers.get('*');
-        if (wildcardHandlers) {
-            wildcardHandlers.forEach(handler => {
-                try {
-                    handler(action);
-                } catch (e) {
-                    this.logError(`Wildcard handler error: ${e}`);
-                }
-            });
-        }
         
         this.log(`Dispatched action '${action.name}'`);
     }
@@ -854,7 +806,10 @@ export class EstuaryActionManagerComponent extends BaseScriptComponent {
      */
     registerAction(actionName: string, description?: string): void {
         if (this._manager) {
-            const charId = this._manager.characterId || '*';
+            // Get characterId from singleton when needed
+            const charId = EstuaryCredentials.hasInstance && EstuaryCredentials.instance
+                ? EstuaryCredentials.instance.characterId || '*'
+                : '*';
             this._manager.registerAction(charId, actionName, description);
         }
     }
@@ -865,7 +820,10 @@ export class EstuaryActionManagerComponent extends BaseScriptComponent {
      */
     registerActions(actionNames: string[]): void {
         if (this._manager) {
-            const charId = this._manager.characterId || '*';
+            // Get characterId from singleton when needed
+            const charId = EstuaryCredentials.hasInstance && EstuaryCredentials.instance
+                ? EstuaryCredentials.instance.characterId || '*'
+                : '*';
             this._manager.registerActions(charId, actionNames);
         }
     }
@@ -877,10 +835,7 @@ export class EstuaryActionManagerComponent extends BaseScriptComponent {
      * @returns Unsubscribe function
      */
     onAction(actionName: string, handler: (action: ParsedAction) => void): () => void {
-        if (this._manager) {
-            return this._manager.onAction(actionName, handler);
-        }
-        return () => {};
+        return this._manager?.onAction(actionName, handler) || (() => {});
     }
     
     /**
@@ -889,10 +844,7 @@ export class EstuaryActionManagerComponent extends BaseScriptComponent {
      * @returns Unsubscribe function
      */
     onAnyAction(handler: (action: ParsedAction) => void): () => void {
-        if (this._manager) {
-            return this._manager.onAnyAction(handler);
-        }
-        return () => {};
+        return this._manager?.onAnyAction(handler) || (() => {});
     }
     
     // ==================== Logging ====================
@@ -983,26 +935,24 @@ export class EstuaryActions {
      * ```
      */
     static on(actionName: string, handler: (action: ParsedAction) => void): () => void {
+        if (EstuaryActions._manager) {
+            return EstuaryActions._manager.onAction(actionName, handler);
+        }
+        
+        // Queue for when manager is set
         const sub = {
             type: 'specific' as const,
             actionName,
             handler,
             unsubscribe: undefined as (() => void) | undefined
         };
-        
-        if (EstuaryActions._manager) {
-            sub.unsubscribe = EstuaryActions._manager.onAction(actionName, handler);
-        } else {
-            // Queue for when manager is set
-            EstuaryActions._pendingSubscriptions.push(sub);
-            print(`[EstuaryActions] Queued subscription for action '${actionName}' (manager not ready)`);
-        }
+        EstuaryActions._pendingSubscriptions.push(sub);
+        print(`[EstuaryActions] Queued subscription for action '${actionName}' (manager not ready)`);
         
         return () => {
             if (sub.unsubscribe) {
                 sub.unsubscribe();
             }
-            // Remove from pending
             const index = EstuaryActions._pendingSubscriptions.indexOf(sub);
             if (index > -1) {
                 EstuaryActions._pendingSubscriptions.splice(index, 1);
@@ -1024,25 +974,23 @@ export class EstuaryActions {
      * ```
      */
     static onAny(handler: (action: ParsedAction) => void): () => void {
+        if (EstuaryActions._manager) {
+            return EstuaryActions._manager.onAnyAction(handler);
+        }
+        
+        // Queue for when manager is set
         const sub = {
             type: 'any' as const,
             handler,
             unsubscribe: undefined as (() => void) | undefined
         };
-        
-        if (EstuaryActions._manager) {
-            sub.unsubscribe = EstuaryActions._manager.onAnyAction(handler);
-        } else {
-            // Queue for when manager is set
-            EstuaryActions._pendingSubscriptions.push(sub);
-            print("[EstuaryActions] Queued subscription for all actions (manager not ready)");
-        }
+        EstuaryActions._pendingSubscriptions.push(sub);
+        print("[EstuaryActions] Queued subscription for all actions (manager not ready)");
         
         return () => {
             if (sub.unsubscribe) {
                 sub.unsubscribe();
             }
-            // Remove from pending
             const index = EstuaryActions._pendingSubscriptions.indexOf(sub);
             if (index > -1) {
                 EstuaryActions._pendingSubscriptions.splice(index, 1);

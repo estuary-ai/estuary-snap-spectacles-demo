@@ -297,7 +297,6 @@
     characterId: true
     serverUrl: true
     debugMode: true
-    userIdField: true
   ScriptTypesDefault:
     {}
   ScriptInputs:
@@ -306,7 +305,7 @@
       characterId: 814bdbab-4fc9-4e84-9414-e96fdae58443
       serverUrl: "wss://api.estuary-ai.com"
       debugMode: true
-      userIdField: ""
+      userIdField: spectacles_mkfa0ddg
   ScriptTypes:
     "":
       {}

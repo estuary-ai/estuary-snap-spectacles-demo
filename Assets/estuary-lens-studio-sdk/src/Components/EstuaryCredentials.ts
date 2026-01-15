@@ -12,11 +12,15 @@
  * 4. Reference this SceneObject from other Estuary components
  * 
  * User ID Management:
- * - A random User ID is automatically generated on each session
- * - To use a specific User ID (e.g., for testing or resuming a conversation),
- *   enter it in the "User ID" field in the Inspector
- * - If the User ID field is empty, a random ID will be generated
+ * - User ID is persisted on-device using PersistentStorageSystem
+ * - If a User ID is entered in the "User ID" field, it will be used and stored
+ * - If the User ID field is empty, the stored User ID will be loaded from device storage
+ * - If no stored User ID exists, a new one will be generated and stored
+ * - This allows conversation persistence across Lens sessions on the same device
  */
+
+/** Storage key for persistent user ID */
+const USER_ID_STORAGE_KEY = "estuary_user_id";
 
 /**
  * Interface for accessing EstuaryCredentials from other scripts.
@@ -81,11 +85,12 @@ export class EstuaryCredentials extends BaseScriptComponent implements IEstuaryC
     
     /**
      * User ID field.
-     * If provided, this User ID will be used. Otherwise, a random User ID will be generated.
+     * If provided, this User ID will be used and stored for future sessions.
+     * If empty, the stored User ID will be loaded from device storage.
      * Use this to test with a specific User ID or resume a conversation.
      */
     @input
-    @hint("Enter a User ID to use, or leave empty to auto-generate a random one")
+    @hint("Enter a User ID to use (will be stored), or leave empty to use stored/generated ID")
     @allowUndefined
     userIdField: string = "";
     
@@ -149,20 +154,43 @@ export class EstuaryCredentials extends BaseScriptComponent implements IEstuaryC
     
     /**
      * Initialize the user ID based on configuration.
-     * If userIdField is provided, use it. Otherwise, generate a random User ID.
+     * Priority: userIdField (if provided) > stored User ID > generate new
+     * If userIdField is provided, it will be stored for future sessions.
      */
     private initializeUserId(): void {
-        // Use manual User ID if provided
-        if (this.userIdField && this.userIdField.length > 0) {
-            this._resolvedUserId = this.userIdField;
+        const store = global.persistentStorageSystem.store;
+        
+        // Priority 1: Use User ID from field if provided (and store it)
+        // Trim whitespace to handle copy-paste issues
+        const trimmedUserIdField = this.userIdField ? this.userIdField.trim() : '';
+        if (trimmedUserIdField.length > 0) {
+            this._resolvedUserId = trimmedUserIdField;
+            // Store the manual User ID for future sessions
+            store.putString(USER_ID_STORAGE_KEY, this._resolvedUserId);
             this.log(`Using User ID from field: ${this._resolvedUserId}`);
+            this.log(`Stored User ID in persistent storage`);
             this.printUserIdBanner();
             return;
         }
         
-        // Generate a random User ID
+        // Priority 2: Try to load stored User ID from device
+        if (store.has(USER_ID_STORAGE_KEY)) {
+            const storedId = store.getString(USER_ID_STORAGE_KEY);
+            // Trim stored value as well
+            const trimmedStoredId = storedId ? storedId.trim() : '';
+            if (trimmedStoredId.length > 0) {
+                this._resolvedUserId = trimmedStoredId;
+                this.log(`Loaded User ID from persistent storage: ${this._resolvedUserId}`);
+                this.printUserIdBanner();
+                return;
+            }
+        }
+        
+        // Priority 3: Generate new User ID and store it
         this._resolvedUserId = this.generateRandomUserId();
-        this.log(`Generated random User ID: ${this._resolvedUserId}`);
+        store.putString(USER_ID_STORAGE_KEY, this._resolvedUserId);
+        this.log(`Generated new User ID: ${this._resolvedUserId}`);
+        this.log(`Stored User ID in persistent storage`);
         this.printUserIdBanner();
     }
     
@@ -210,7 +238,10 @@ export class EstuaryCredentials extends BaseScriptComponent implements IEstuaryC
         if (isValid) {
             this.log("✅ Credentials configured successfully");
             this.log(`   User ID: ${this._resolvedUserId}`);
-            this.log(`   User ID source: ${this.userIdField && this.userIdField.length > 0 ? 'manual' : 'auto-generated'}`);
+            const source = this.userIdField && this.userIdField.length > 0 
+                ? 'manual (from field)' 
+                : 'persistent storage';
+            this.log(`   User ID source: ${source}`);
         }
         
         return isValid;

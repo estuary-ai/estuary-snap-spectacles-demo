@@ -10,7 +10,16 @@
  * 2. Add this script to the SceneObject
  * 3. Set your API key and Character ID in the Inspector
  * 4. Reference this SceneObject from other Estuary components
+ * 
+ * User ID Management:
+ * - For testing: Enter a manual user ID in the "Manual User ID" field
+ * - For production: Enable "Generate Persistent User ID" to auto-generate a unique ID
+ *   that persists across app sessions (stored in device local storage)
+ * - If both are set, manual user ID takes priority
  */
+
+/** Storage key for persistent user ID */
+const USER_ID_STORAGE_KEY = "estuary_persistent_user_id";
 
 /**
  * Interface for accessing EstuaryCredentials from other scripts.
@@ -25,6 +34,8 @@ export interface IEstuaryCredentials {
     serverUrl: string;
     /** Enable debug logging across all Estuary components */
     debugMode: boolean;
+    /** The user ID for conversation persistence (manual or auto-generated) */
+    userId: string;
 }
 
 /**
@@ -69,6 +80,30 @@ export class EstuaryCredentials extends BaseScriptComponent implements IEstuaryC
     @hint("Enable debug logging for all Estuary components")
     debugMode: boolean = true;
     
+    // ==================== User ID Configuration ====================
+    
+    /**
+     * Manual User ID for testing/development purposes.
+     * When set, this takes priority over auto-generated IDs.
+     * Leave empty to use auto-generated persistent ID.
+     */
+    @input
+    @hint("Manual User ID for testing (leave empty to use auto-generated ID)")
+    manualUserId: string = "";
+    
+    /**
+     * Generate a persistent unique User ID automatically.
+     * When enabled, a unique ID is generated on first run and stored
+     * in device local storage. This ID persists across app sessions,
+     * allowing users to resume conversations where they left off.
+     */
+    @input
+    @hint("Auto-generate and persist a unique User ID (recommended for production)")
+    generatePersistentUserId: boolean = true;
+    
+    /** The resolved user ID (either manual or auto-generated) */
+    private _resolvedUserId: string = "";
+    
     // ==================== Singleton Access ====================
     
     private static _instance: EstuaryCredentials | null = null;
@@ -88,6 +123,16 @@ export class EstuaryCredentials extends BaseScriptComponent implements IEstuaryC
         return EstuaryCredentials._instance !== null;
     }
     
+    // ==================== User ID Property ====================
+    
+    /**
+     * Get the resolved user ID.
+     * Priority: manualUserId > persistentUserId > generated fallback
+     */
+    get userId(): string {
+        return this._resolvedUserId;
+    }
+    
     // ==================== Lifecycle ====================
     
     onAwake() {
@@ -99,6 +144,9 @@ export class EstuaryCredentials extends BaseScriptComponent implements IEstuaryC
             print("[EstuaryCredentials] WARNING: Multiple EstuaryCredentials instances detected. Using the first one.");
         }
         
+        // Initialize user ID
+        this.initializeUserId();
+        
         // Validate credentials
         this.validateCredentials();
     }
@@ -107,6 +155,120 @@ export class EstuaryCredentials extends BaseScriptComponent implements IEstuaryC
         if (EstuaryCredentials._instance === this) {
             EstuaryCredentials._instance = null;
         }
+    }
+    
+    // ==================== User ID Management ====================
+    
+    /**
+     * Initialize the user ID based on configuration.
+     * Priority: manualUserId > persistentUserId > generated fallback
+     */
+    private initializeUserId(): void {
+        // Priority 1: Manual user ID (for development/testing)
+        if (this.manualUserId && this.manualUserId.length > 0) {
+            this._resolvedUserId = this.manualUserId;
+            this.log(`Using manual User ID: ${this._resolvedUserId}`);
+            return;
+        }
+        
+        // Priority 2: Auto-generate persistent user ID
+        if (this.generatePersistentUserId) {
+            this._resolvedUserId = this.getOrCreatePersistentUserId();
+            this.log(`Using persistent User ID: ${this._resolvedUserId}`);
+            return;
+        }
+        
+        // Fallback: Generate a session-based ID (changes each session)
+        this._resolvedUserId = this.generateSessionUserId();
+        this.log(`Using session User ID: ${this._resolvedUserId} (not persisted)`);
+    }
+    
+    /**
+     * Get the persistent user ID from storage, or create one if it doesn't exist.
+     * Uses Lens Studio's PersistentStorageSystem for device-local storage.
+     */
+    private getOrCreatePersistentUserId(): string {
+        try {
+            const store = global.persistentStorageSystem.store;
+            
+            // Try to get existing user ID
+            if (store.has(USER_ID_STORAGE_KEY)) {
+                const storedId = store.getString(USER_ID_STORAGE_KEY);
+                if (storedId && storedId.length > 0) {
+                    this.log(`Loaded existing persistent User ID from storage`);
+                    return storedId;
+                }
+            }
+            
+            // Generate new user ID
+            const newUserId = this.generatePersistentUserIdValue();
+            
+            // Store it for future sessions
+            store.putString(USER_ID_STORAGE_KEY, newUserId);
+            this.log(`Created and saved new persistent User ID`);
+            
+            return newUserId;
+            
+        } catch (e) {
+            print(`[EstuaryCredentials] WARNING: Could not access persistent storage: ${e}`);
+            print("[EstuaryCredentials] Falling back to session-based User ID");
+            return this.generateSessionUserId();
+        }
+    }
+    
+    /**
+     * Generate a new unique persistent user ID.
+     * Format: "user_" + random alphanumeric string
+     */
+    private generatePersistentUserIdValue(): string {
+        // Generate a unique ID using timestamp + random component
+        const timestamp = Date.now().toString(36);
+        const randomPart = Math.random().toString(36).substring(2, 10);
+        return `user_${timestamp}_${randomPart}`;
+    }
+    
+    /**
+     * Generate a session-based user ID (changes each session).
+     * Used as fallback when persistent storage is not available or not enabled.
+     */
+    private generateSessionUserId(): string {
+        return `session_${Date.now().toString(36)}`;
+    }
+    
+    /**
+     * Clear the persistent user ID from storage.
+     * Call this to reset a user's conversation history.
+     */
+    clearPersistentUserId(): void {
+        try {
+            const store = global.persistentStorageSystem.store;
+            if (store.has(USER_ID_STORAGE_KEY)) {
+                store.remove(USER_ID_STORAGE_KEY);
+                this.log("Cleared persistent User ID from storage");
+            }
+            
+            // Re-initialize user ID
+            this.initializeUserId();
+            
+        } catch (e) {
+            print(`[EstuaryCredentials] WARNING: Could not clear persistent storage: ${e}`);
+        }
+    }
+    
+    /**
+     * Get the current persistent user ID from storage without modifying it.
+     * Returns null if no persistent ID exists.
+     */
+    getPersistentUserIdFromStorage(): string | null {
+        try {
+            const store = global.persistentStorageSystem.store;
+            if (store.has(USER_ID_STORAGE_KEY)) {
+                return store.getString(USER_ID_STORAGE_KEY);
+            }
+        } catch (e) {
+            // Ignore errors
+        }
+        return null;
     }
     
     // ==================== Validation ====================
@@ -128,8 +290,15 @@ export class EstuaryCredentials extends BaseScriptComponent implements IEstuaryC
             isValid = false;
         }
         
+        if (!this._resolvedUserId || this._resolvedUserId.length === 0) {
+            print("[EstuaryCredentials] ⚠️ WARNING: User ID could not be resolved!");
+            isValid = false;
+        }
+        
         if (isValid) {
             this.log("✅ Credentials configured successfully");
+            this.log(`   User ID: ${this._resolvedUserId}`);
+            this.log(`   User ID source: ${this.manualUserId ? 'manual' : (this.generatePersistentUserId ? 'persistent' : 'session')}`);
         }
         
         return isValid;

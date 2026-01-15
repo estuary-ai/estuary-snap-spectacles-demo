@@ -133,8 +133,15 @@ export class SimpleAutoConnect extends BaseScriptComponent {
             return;
         }
         
-        // Generate a unique player ID
-        this.playerId = "spectacles_" + Date.now().toString(36);
+        // Get player ID from credentials (supports manual, persistent, or session-based IDs)
+        if (this.credentials.userId && this.credentials.userId.length > 0) {
+            this.playerId = this.credentials.userId;
+            this.log(`Using User ID from credentials: ${this.playerId}`);
+        } else {
+            // Fallback to generated ID if credentials don't provide one
+            this.playerId = "spectacles_" + Date.now().toString(36);
+            this.log(`Using fallback generated User ID: ${this.playerId}`);
+        }
         
         // Set up the update loop for audio processing
         this.updateEvent = this.createEvent("UpdateEvent");

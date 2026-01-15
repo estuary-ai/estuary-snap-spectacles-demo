@@ -308,6 +308,7 @@ export class EstuaryClient extends EventEmitter<any> {
             };
 
             this.log(`Connecting to ${wsUrl}...`);
+            this.log(`Authenticating with player_id: ${this._config.playerId}`);
 
             // Create WebSocket connection using Lens Studio's InternetModule
             // Note: As of Lens Studio 5.9, createWebSocket was moved from RemoteServiceModule to InternetModule
@@ -466,6 +467,7 @@ export class EstuaryClient extends EventEmitter<any> {
             // Engine.IO open - now connect to namespace with auth
             this.log('Engine.IO connected, joining namespace...');
             const authJson = JSON.stringify(this._auth);
+            this.log(`Sending auth payload: ${authJson}`);
             // Use string concatenation instead of template literals for reliability
             const connectMsg = '40' + this._namespace + ',' + authJson;
             this.sendRaw(connectMsg);

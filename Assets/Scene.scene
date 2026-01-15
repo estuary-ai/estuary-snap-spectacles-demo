@@ -222,7 +222,7 @@
 - !<ScriptComponent/73cae4d0-8525-406f-a25c-73dfc9bd855c>
   PrefabRemaps:
     []
-  Name: MyCharacterActions
+  Name: ExampleCharacterActions
   Enabled: true
   ScriptAsset: !<reference> d580c21f-abcf-4d91-8203-88cc854fea90
   ScriptInputsDefault:
@@ -254,7 +254,7 @@
 - !<ScriptComponent/93e405d7-7180-4c11-870d-461caad2969c>
   PrefabRemaps:
     []
-  Name: SimpleAutoConnect
+  Name: VoiceConnection
   Enabled: true
   ScriptAsset: !<reference> e780724e-9de7-464c-a83b-7cdf30c6fbc0
   ScriptInputsDefault:
@@ -293,8 +293,11 @@
   Enabled: true
   ScriptAsset: !<reference> 733f6a95-3e4d-4328-8094-851235be6b03
   ScriptInputsDefault:
+    apiKey: true
+    characterId: true
     serverUrl: true
     debugMode: true
+    userIdField: true
   ScriptTypesDefault:
     {}
   ScriptInputs:
@@ -303,6 +306,7 @@
       characterId: 814bdbab-4fc9-4e84-9414-e96fdae58443
       serverUrl: "wss://api.estuary-ai.com"
       debugMode: true
+      userIdField: ""
   ScriptTypes:
     "":
       {}

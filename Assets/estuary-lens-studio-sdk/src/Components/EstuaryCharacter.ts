@@ -12,7 +12,7 @@
 
 import { EstuaryManager, IEstuaryCharacterHandler } from './EstuaryManager';
 import { EstuaryConfig } from '../Core/EstuaryConfig';
-import { ConnectionState, EventEmitter } from '../Core/EstuaryEvents';
+import { ConnectionState, EventEmitter, CameraCaptureRequest } from '../Core/EstuaryEvents';
 import { SessionInfo } from '../Models/SessionInfo';
 import { BotResponse } from '../Models/BotResponse';
 import { BotVoice } from '../Models/BotVoice';
@@ -31,6 +31,7 @@ export interface EstuaryCharacterEvents {
     interrupt: (data: InterruptData) => void;
     error: (error: string) => void;
     connectionStateChanged: (state: ConnectionState) => void;
+    cameraCaptureRequest: (request: CameraCaptureRequest) => void;
 }
 
 /**
@@ -229,6 +230,9 @@ export class EstuaryCharacter
         this._currentPartialResponse = '';
         this._currentMessageId = '';
 
+        // Tell server to start voice mode (enables Deepgram STT)
+        EstuaryManager.instance.startVoiceMode();
+
         print(`[EstuaryCharacter] Voice session started for ${this._characterId}`);
 
         // Start microphone if available
@@ -242,6 +246,9 @@ export class EstuaryCharacter
      */
     endVoiceSession(): void {
         this._isVoiceSessionActive = false;
+
+        // Tell server to stop voice mode (saves STT costs)
+        EstuaryManager.instance.stopVoiceMode();
 
         print(`[EstuaryCharacter] Voice session ended for ${this._characterId}`);
 
@@ -354,6 +361,17 @@ export class EstuaryCharacter
 
     handleConnectionStateChanged(state: ConnectionState): void {
         this.emit('connectionStateChanged', state);
+    }
+
+    handleCameraCaptureRequest(request: CameraCaptureRequest): void {
+        print('');
+        print('📷 ========================================');
+        print('📷 CAMERA CAPTURE REQUESTED!');
+        print(`📷 Subscribe to 'cameraCaptureRequest' event to handle this.`);
+        print(`📷 Then call sendCameraImage() with the captured image.`);
+        print('📷 ========================================');
+        print('');
+        this.emit('cameraCaptureRequest', request);
     }
 
     // ==================== Private Methods ====================

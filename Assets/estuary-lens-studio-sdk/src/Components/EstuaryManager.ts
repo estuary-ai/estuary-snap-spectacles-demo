@@ -10,7 +10,7 @@
 
 import { EstuaryClient } from '../Core/EstuaryClient';
 import { EstuaryConfig, validateConfig } from '../Core/EstuaryConfig';
-import { ConnectionState, EventEmitter } from '../Core/EstuaryEvents';
+import { ConnectionState, EventEmitter, CameraCaptureRequest } from '../Core/EstuaryEvents';
 import { SessionInfo } from '../Models/SessionInfo';
 import { BotResponse } from '../Models/BotResponse';
 import { BotVoice } from '../Models/BotVoice';
@@ -226,6 +226,46 @@ export class EstuaryManager extends EventEmitter<any> {
     }
 
     /**
+     * Start voice mode on the server (enables Deepgram STT).
+     * Must be called before streaming audio for speech-to-text.
+     */
+    startVoiceMode(): void {
+        if (!this._client.isConnected) {
+            this.logError('Cannot start voice mode: not connected');
+            return;
+        }
+
+        this._client.startVoiceMode();
+    }
+
+    /**
+     * Stop voice mode on the server (disables Deepgram STT).
+     */
+    stopVoiceMode(): void {
+        if (!this._client.isConnected) {
+            return;
+        }
+
+        this._client.stopVoiceMode();
+    }
+
+    /**
+     * Send a camera image to the server for AI analysis.
+     * @param imageBase64 Base64-encoded image data
+     * @param mimeType MIME type of the image (e.g., 'image/jpeg')
+     * @param requestId Optional request ID if responding to a camera_capture_request
+     * @param text Optional text context to send with the image
+     */
+    sendCameraImage(imageBase64: string, mimeType: string = 'image/jpeg', requestId?: string, text?: string): void {
+        if (!this._client.isConnected) {
+            this.logError('Cannot send camera image: not connected');
+            return;
+        }
+
+        this._client.sendCameraImage(imageBase64, mimeType, requestId, text);
+    }
+
+    /**
      * Dispose of the manager and release resources.
      */
     dispose(): void {
@@ -251,6 +291,7 @@ export class EstuaryManager extends EventEmitter<any> {
         this._client.on('interrupt', (data: InterruptData) => this.handleInterrupt(data));
         this._client.on('error', (error: string) => this.handleError(error));
         this._client.on('connectionStateChanged', (state: ConnectionState) => this.handleConnectionStateChanged(state));
+        this._client.on('cameraCaptureRequest', (request: CameraCaptureRequest) => this.handleCameraCaptureRequest(request));
 
         this.log('EstuaryManager initialized');
     }
@@ -326,6 +367,14 @@ export class EstuaryManager extends EventEmitter<any> {
         }
     }
 
+    private handleCameraCaptureRequest(request: CameraCaptureRequest): void {
+        this.log(`Camera capture request: ${request.request_id}`);
+        this.emit('cameraCaptureRequest', request);
+        if (this._activeCharacter) {
+            this._activeCharacter.handleCameraCaptureRequest(request);
+        }
+    }
+
     // ==================== Logging ====================
 
     private log(message: string): void {
@@ -353,6 +402,7 @@ export interface IEstuaryCharacterHandler {
     handleInterrupt(data: InterruptData): void;
     handleError(error: string): void;
     handleConnectionStateChanged(state: ConnectionState): void;
+    handleCameraCaptureRequest(request: CameraCaptureRequest): void;
 }
 
 

@@ -92,6 +92,24 @@ interface AudioPayload {
 }
 
 /**
+ * Camera capture request from server.
+ */
+interface CameraCaptureRequest {
+    request_id: string;
+    text?: string;
+}
+
+/**
+ * Camera image payload to send to server.
+ */
+interface CameraImagePayload {
+    image: string;  // base64 encoded image
+    mime_type: string;
+    request_id?: string;
+    text?: string;
+}
+
+/**
  * Estuary WebSocket client for Lens Studio.
  * Implements Socket.IO v4 protocol using Lens Studio's WebSocket API.
  */
@@ -269,6 +287,63 @@ export class EstuaryClient extends EventEmitter<any> {
 
         this.emitSocketEvent('audio_playback_complete', null);
         this.log('Notified audio playback complete');
+    }
+
+    /**
+     * Start voice mode on the server (enables Deepgram STT).
+     * Must be called before streaming audio for speech-to-text.
+     */
+    startVoiceMode(): void {
+        if (!this.isConnected) {
+            this.logError('Cannot start voice mode: not connected');
+            return;
+        }
+
+        this.emitSocketEvent('start_voice', null);
+        this.log('Requested server to start voice mode');
+    }
+
+    /**
+     * Stop voice mode on the server (disables Deepgram STT).
+     * Call this when switching to text-only mode to save STT costs.
+     */
+    stopVoiceMode(): void {
+        if (!this.isConnected) {
+            this.logError('Cannot stop voice mode: not connected');
+            return;
+        }
+
+        this.emitSocketEvent('stop_voice', null);
+        this.log('Requested server to stop voice mode');
+    }
+
+    /**
+     * Send a camera image to the server for AI analysis.
+     * @param imageBase64 - Base64 encoded image data
+     * @param mimeType - MIME type of the image (e.g., 'image/jpeg')
+     * @param requestId - Optional request ID if responding to a camera_capture_request
+     * @param text - Optional text context to send with the image
+     */
+    sendCameraImage(imageBase64: string, mimeType: string = 'image/jpeg', requestId?: string, text?: string): void {
+        if (!this.isConnected) {
+            this.logError('Cannot send camera image: not connected');
+            return;
+        }
+
+        const payload: CameraImagePayload = {
+            image: imageBase64,
+            mime_type: mimeType,
+        };
+
+        if (requestId) {
+            payload.request_id = requestId;
+        }
+        if (text) {
+            payload.text = text;
+        }
+
+        this.emitSocketEvent('camera_image', payload);
+        this.log(`Sent camera image (${mimeType})${requestId ? ` for request ${requestId}` : ''}`);
     }
 
     /**
@@ -551,6 +626,9 @@ export class EstuaryClient extends EventEmitter<any> {
             case 'quota_exceeded':
                 this.handleQuotaExceeded(data);
                 break;
+            case 'camera_capture':
+                this.handleCameraCaptureRequest(data);
+                break;
             default:
                 this.log(`Unhandled event: ${eventName}`);
         }
@@ -629,6 +707,23 @@ export class EstuaryClient extends EventEmitter<any> {
     private handleQuotaExceeded(data: any): void {
         const message = data?.message || 'API quota exceeded';
         this.logError(`Quota exceeded: ${message}`);
+    }
+
+    private handleCameraCaptureRequest(data: any): void {
+        try {
+            const requestId = data?.request_id || '';
+            const text = data?.text;
+            print('');
+            print('📷 ========================================');
+            print('📷 CAMERA CAPTURE REQUEST FROM SERVER');
+            print(`📷 Request ID: ${requestId}`);
+            print(`📷 Context: ${text || '(none)'}`);
+            print('📷 ========================================');
+            print('');
+            this.emit('cameraCaptureRequest', { request_id: requestId, text });
+        } catch (e) {
+            this.logError(`Failed to handle camera_capture_request: ${e}`);
+        }
     }
 
     private handleReconnect(): void {

@@ -293,18 +293,16 @@
   Enabled: true
   ScriptAsset: !<reference> 733f6a95-3e4d-4328-8094-851235be6b03
   ScriptInputsDefault:
-    apiKey: true
     characterId: true
-    serverUrl: true
     debugMode: true
     userIdField: true
   ScriptTypesDefault:
     {}
   ScriptInputs:
     "":
-      apiKey: est_sCMwDWEEvpYjNZm9ucfDUjwi8LCaIye7d-uIC4jgGrM
+      apiKey: est_WbkPgxh5W5PS5qYeSVvhWRgnj_TOvxeLuMX-20oxZ00
       characterId: 814bdbab-4fc9-4e84-9414-e96fdae58443
-      serverUrl: "wss://api.estuary-ai.com"
+      serverUrl: "ws://localhost:4001"
       debugMode: true
       userIdField: ""
   ScriptTypes:

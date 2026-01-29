@@ -96,9 +96,9 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     
     /** 
      * Default sample rate for audio playback.
-     * ElevenLabs uses 24000Hz, other TTS providers may vary.
+     * ElevenLabs uses 48000Hz, other TTS providers may vary.
      */
-    audioSampleRate: number = 24000;
+    audioSampleRate: number = 48000;
 
     
     // ==================== Private Members ====================

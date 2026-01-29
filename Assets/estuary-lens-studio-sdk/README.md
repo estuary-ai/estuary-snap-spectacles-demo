@@ -198,7 +198,7 @@ Handles playback of AI voice responses.
 
 | Property | Description |
 |----------|-------------|
-| `sampleRate` | Playback sample rate (24000) |
+| `sampleRate` | Playback sample rate (48000) |
 | `isPlaying` | Whether audio is playing |
 | `autoInterrupt` | Stop on new audio |
 
@@ -212,7 +212,7 @@ Handles playback of AI voice responses.
 The SDK uses the following audio format:
 
 - **Recording**: 16,000 Hz, Mono, 16-bit PCM
-- **Playback**: 24,000 Hz, Mono, 16-bit PCM
+- **Playback**: 48,000 Hz, Mono, 16-bit PCM
 - **Encoding**: Base64 for transmission
 
 ## Privacy Considerations

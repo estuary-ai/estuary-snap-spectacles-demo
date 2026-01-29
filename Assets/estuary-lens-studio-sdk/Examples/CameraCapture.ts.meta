@@ -22,11 +22,12 @@
   VersionMajor: 0
   VersionMinor: 0
   VersionPatch: 0
-  ComponentUid: 00000000-0000-0000-0000-000000000000
+  ComponentUid: 10189937-0a3f-430d-85b8-a1c114ad93a1
   ExportUid: 00000000-0000-0000-0000-000000000000
   PackagePolicy: CanBeUnpacked
   ScriptInputsHidden:
-    {}
+    cameraTexture: false
+    debugMode: false
   ScriptTypesHidden:
     {}
   ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
@@ -36,10 +37,11 @@
   Attachments:
     []
   DefaultScriptInputs:
-    -
-      {}
+    - cameraTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
+      debugMode: true
   ScriptTypes:
     -
       {}
   InputLines:
-    []
+    - '// @input Asset.Texture cameraTexture {"hint":"Device Camera Texture from your scene"}'
+    - '// @input bool debugMode = true {"hint":"Enable debug logging"}'

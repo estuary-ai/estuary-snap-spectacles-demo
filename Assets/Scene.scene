@@ -6,6 +6,7 @@
     - !<own> 354d79a7-4024-46f7-a448-782736528c27
     - !<own> ab344148-bd6f-4c66-b3cd-5913efb971e2
     - !<own> e2ade54d-1248-4d82-83f0-f4763cac33d7
+    - !<own> 41e79547-fd92-4794-9380-3d94aff4fbfe
   layers: !<Layers/267ee9a7-aff2-4f9d-9a49-f71214747d03>
     userLayers:
       []
@@ -172,6 +173,30 @@
   DecayType: None
   DecayLimit: false
   DecayRange: 40.000000
+- !<ScriptComponent/0f32689d-52b2-441d-9458-f680eee0fdd3>
+  PrefabRemaps:
+    []
+  Name: ImageEndpointTest
+  Enabled: true
+  ScriptAsset: !<reference> 5fbbfa62-38f4-4f08-b159-14a609da60f6
+  ScriptInputsDefault:
+    cameraTexture: true
+    staticTestImage: true
+    autoRunOnConnect: true
+    testDelay: true
+    testPrompt: true
+  ScriptTypesDefault:
+    {}
+  ScriptInputs:
+    "":
+      cameraTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
+      staticTestImage: !<reference.Texture> 00000000-0000-0000-0000-000000000000
+      autoRunOnConnect: true
+      testDelay: !<float> 2.000000
+      testPrompt: "This is a test image upload. What do you see?"
+  ScriptTypes:
+    "":
+      {}
 - !<SceneObject/354d79a7-4024-46f7-a448-782736528c27>
   PrefabRemaps:
     []
@@ -187,6 +212,21 @@
     []
   Components:
     - !<own> c135cc29-3d52-4315-bc6f-0ec1de609bc5
+- !<SceneObject/41e79547-fd92-4794-9380-3d94aff4fbfe>
+  PrefabRemaps:
+    []
+  Name: ImageEndpointTest
+  Enabled: true
+  Layers: 1
+  LocalTransform: !<TransformEntity>
+    Position: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Rotation: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Scale: {x: 1.000000, y: 1.000000, z: 1.000000}
+    HasSegmentScaleCompensation: false
+  Children:
+    []
+  Components:
+    - !<own> 0f32689d-52b2-441d-9458-f680eee0fdd3
 - !<ScriptComponent/5c197bd5-db46-42ce-87b9-e7e390f5bb89>
   PrefabRemaps:
     []
@@ -300,7 +340,7 @@
     {}
   ScriptInputs:
     "":
-      apiKey: est_WbkPgxh5W5PS5qYeSVvhWRgnj_TOvxeLuMX-20oxZ00
+      apiKey: est_gZk00H8x984c4yDDR5ave4dGbBs6asEUzdjQ6_Ugb_A
       characterId: 814bdbab-4fc9-4e84-9414-e96fdae58443
       serverUrl: "ws://localhost:4001"
       debugMode: true

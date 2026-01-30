@@ -75,6 +75,7 @@ interface AuthenticateData {
     api_key: string;
     character_id: string;
     player_id: string;
+    audio_sample_rate?: number;  // TTS playback sample rate (default 48000, use 16000 for Spectacles)
 }
 
 /**
@@ -376,10 +377,12 @@ export class EstuaryClient extends EventEmitter<any> {
             const wsUrl = this.buildWebSocketUrl();
             
             // Store auth for namespace connection
+            // Include audio_sample_rate to tell server what TTS sample rate to use
             this._auth = {
                 api_key: this._config.apiKey,
                 character_id: this._config.characterId,
-                player_id: this._config.playerId
+                player_id: this._config.playerId,
+                audio_sample_rate: this._config.playbackSampleRate || 16000  // Default 16kHz for Spectacles
             };
 
             this.log(`Connecting to ${wsUrl}...`);

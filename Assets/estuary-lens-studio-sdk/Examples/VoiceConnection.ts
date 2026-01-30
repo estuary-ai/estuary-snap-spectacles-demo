@@ -96,9 +96,10 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     
     /** 
      * Default sample rate for audio playback.
-     * ElevenLabs uses 48000Hz, other TTS providers may vary.
+     * 16000Hz is optimized for Snap Spectacles hardware.
+     * Other platforms may use 48000Hz.
      */
-    audioSampleRate: number = 48000;
+    audioSampleRate: number = 16000;
 
     
     // ==================== Private Members ====================

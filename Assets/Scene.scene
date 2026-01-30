@@ -177,7 +177,7 @@
   PrefabRemaps:
     []
   Name: ImageEndpointTest
-  Enabled: true
+  Enabled: false
   ScriptAsset: !<reference> 5fbbfa62-38f4-4f08-b159-14a609da60f6
   ScriptInputsDefault:
     cameraTexture: true
@@ -227,6 +227,7 @@
     []
   Components:
     - !<own> 0f32689d-52b2-441d-9458-f680eee0fdd3
+    - !<own> a43cd6d5-9caa-46ab-bf8e-791dc5ba77d7
 - !<ScriptComponent/5c197bd5-db46-42ce-87b9-e7e390f5bb89>
   PrefabRemaps:
     []
@@ -310,6 +311,26 @@
   ScriptTypes:
     "":
       {}
+- !<ScriptComponent/a43cd6d5-9caa-46ab-bf8e-791dc5ba77d7>
+  PrefabRemaps:
+    []
+  Name: CameraCapture
+  Enabled: true
+  ScriptAsset: !<reference> ad52d795-bdf6-4c25-93ab-0101c261719d
+  ScriptInputsDefault:
+    debugMode: true
+    captureResolution: true
+    testCaptureOnStartup: true
+  ScriptTypesDefault:
+    {}
+  ScriptInputs:
+    "":
+      debugMode: true
+      captureResolution: !<float> 512.000000
+      testCaptureOnStartup: false
+  ScriptTypes:
+    "":
+      {}
 - !<SceneObject/ab344148-bd6f-4c66-b3cd-5913efb971e2>
   PrefabRemaps:
     []
@@ -333,16 +354,15 @@
   Enabled: true
   ScriptAsset: !<reference> 733f6a95-3e4d-4328-8094-851235be6b03
   ScriptInputsDefault:
-    characterId: true
     debugMode: true
     userIdField: true
   ScriptTypesDefault:
     {}
   ScriptInputs:
     "":
-      apiKey: est_gZk00H8x984c4yDDR5ave4dGbBs6asEUzdjQ6_Ugb_A
-      characterId: 814bdbab-4fc9-4e84-9414-e96fdae58443
-      serverUrl: "ws://localhost:4001"
+      apiKey: est_WOElJQh_WlHNequHsTpMXCGQjKzbenOQOU2gPumrvRM
+      characterId: ff4933cf-9311-4d47-9997-3e73e0c9b3fd
+      serverUrl: "ws://192.168.1.133:4001"
       debugMode: true
       userIdField: ""
   ScriptTypes:

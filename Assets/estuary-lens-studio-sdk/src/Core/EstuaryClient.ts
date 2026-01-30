@@ -108,6 +108,7 @@ interface CameraImagePayload {
     mime_type: string;
     request_id?: string;
     text?: string;
+    sample_rate?: number;  // TTS output sample rate (default: 16000 for Spectacles)
 }
 
 /**
@@ -324,8 +325,9 @@ export class EstuaryClient extends EventEmitter<any> {
      * @param mimeType - MIME type of the image (e.g., 'image/jpeg')
      * @param requestId - Optional request ID if responding to a camera_capture_request
      * @param text - Optional text context to send with the image
+     * @param sampleRate - TTS output sample rate (default: 16000 for Spectacles hardware)
      */
-    sendCameraImage(imageBase64: string, mimeType: string = 'image/jpeg', requestId?: string, text?: string): void {
+    sendCameraImage(imageBase64: string, mimeType: string = 'image/jpeg', requestId?: string, text?: string, sampleRate: number = 16000): void {
         if (!this.isConnected) {
             this.logError('Cannot send camera image: not connected');
             return;
@@ -334,6 +336,7 @@ export class EstuaryClient extends EventEmitter<any> {
         const payload: CameraImagePayload = {
             image: imageBase64,
             mime_type: mimeType,
+            sample_rate: sampleRate,
         };
 
         if (requestId) {
@@ -344,7 +347,7 @@ export class EstuaryClient extends EventEmitter<any> {
         }
 
         this.emitSocketEvent('camera_image', payload);
-        this.log(`Sent camera image (${mimeType})${requestId ? ` for request ${requestId}` : ''}`);
+        this.log(`Sent camera image (${mimeType}, ${sampleRate}Hz)${requestId ? ` for request ${requestId}` : ''}`);
     }
 
     /**

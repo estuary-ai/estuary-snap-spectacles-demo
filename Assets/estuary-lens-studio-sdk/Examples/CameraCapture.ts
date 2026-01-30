@@ -1,19 +1,36 @@
 /**
- * CameraCapture - Example component for handling camera capture requests.
+ * CameraCapture - Component for handling camera capture requests on Spectacles.
  * 
- * This example shows how to respond to the server's camera capture requests,
- * capture an image from the device camera, and send it back for vision analysis.
+ * This component responds to the server's camera capture requests,
+ * captures an image using the CameraModule API at a configurable resolution,
+ * and sends it back for AI vision analysis.
  * 
  * Setup in Lens Studio:
- * 1. Add a Device Camera Texture to your scene (Resources > Create > Textures > Device Camera Texture)
- * 2. Create a Scene Object and add this script
- * 3. Drag the Device Camera Texture to the "Camera Texture" field in the Inspector
- * 4. Make sure you have an EstuaryCredentials and EstuaryCharacter set up
+ * 1. Create a Scene Object and add this script
+ * 2. Make sure you have EstuaryCredentials and VoiceConnection (or EstuaryManager) set up
+ * 3. Enable "Extended Permissions" in Project Settings for development
+ *    (allows both camera access and WebSocket together)
+ * 4. Optionally adjust "captureResolution" (default 512px) in the Inspector
  * 
  * Usage:
  * When connected, say something like "What am I looking at?" or "Turn on the camera"
  * The server will detect the vision intent and request a camera capture.
  * This component will automatically capture and send the image.
+ * 
+ * Testing:
+ * Enable "testCaptureOnStartup" in the Inspector to automatically capture and send
+ * a photo when the Lens starts. Useful for testing without voice commands.
+ * 
+ * Resolution:
+ * - Default is 512px (smaller dimension), which gives good quality while keeping payload small
+ * - Adjust captureResolution in Inspector for different quality/size tradeoffs
+ * - Higher resolution = better AI analysis but larger payload
+ * 
+ * Note: CameraModule is a Spectacles-only API. This will not work in Lens Studio Preview.
+ * Deploy to Spectacles to test camera capture functionality.
+ * 
+ * Privacy Note: Using CameraModule disables open internet access for publicly released Lenses.
+ * Extended Permissions are required for development/testing but such Lenses cannot be released.
  */
 
 import { EstuaryManager } from '../src/Components/EstuaryManager';
@@ -25,40 +42,143 @@ export class CameraCapture extends BaseScriptComponent {
     // ==================== Configuration ====================
     
     /**
-     * The device camera texture to capture from.
-     * Create this in Lens Studio: Resources > Create > Textures > Device Camera Texture
-     */
-    @input
-    @hint("Device Camera Texture from your scene")
-    cameraTexture: Texture;
-    
-    /**
      * Enable debug logging
      */
     @input
     @hint("Enable debug logging")
     debugMode: boolean = true;
     
+    /**
+     * Image capture resolution (smaller dimension).
+     * Default 512 provides good balance of quality and transfer speed.
+     */
+    @input
+    @hint("Camera capture resolution (smaller dimension in pixels)")
+    captureResolution: number = 512;
+    
+    /**
+     * Test mode: automatically capture and send a photo on startup.
+     * Useful for testing camera capture without voice commands.
+     */
+    @input
+    @hint("Automatically capture and send a photo on startup (for testing)")
+    testCaptureOnStartup: boolean = false;
+    
+    // ==================== CameraModule ====================
+    
+    /**
+     * CameraModule instance for Spectacles camera access.
+     * Uses require() as per Lens Studio's module system.
+     */
+    // @ts-ignore - Lens Studio module system
+    private cameraModule: CameraModule = require('LensStudio:CameraModule');
+    
+    /** Camera texture for continuous frame access */
+    private _cameraTexture: Texture | null = null;
+    
+    /** Flag indicating camera is initialized and receiving frames */
+    private _cameraReady: boolean = false;
+    
     // ==================== State ====================
     
     private _pendingRequest: CameraCaptureRequest | null = null;
     private _isSubscribed: boolean = false;
+    private _isCapturing: boolean = false;
     
     // ==================== Lifecycle ====================
     
     onAwake() {
         this.log('CameraCapture initializing...');
         
-        // Validate camera texture
-        if (!this.cameraTexture) {
-            this.logError('No camera texture assigned! Please add a Device Camera Texture.');
+        // IMPORTANT: CameraModule APIs (createImageRequest, etc.) cannot be called in onAwake!
+        // Must wait for OnStartEvent or later
+        this.createEvent('OnStartEvent').bind(() => {
+            this.initialize();
+        });
+    }
+    
+    /**
+     * Initialize the component after OnStartEvent.
+     * CameraModule APIs are available here.
+     */
+    private initialize(): void {
+        this.log('Initializing CameraModule integration...');
+        
+        // Verify CameraModule is available
+        if (!this.cameraModule) {
+            this.logError('CameraModule not available! This only works on Spectacles hardware.');
             return;
         }
         
-        // Wait a frame for EstuaryManager to initialize
-        this.createEvent('OnStartEvent').bind(() => {
-            this.subscribeToEvents();
-        });
+        // Set up camera with custom resolution
+        this.setupCamera();
+        
+        this.subscribeToEvents();
+    }
+    
+    /**
+     * Set up camera with custom resolution using requestCamera().
+     * This provides continuous frame access at the specified resolution.
+     */
+    private setupCamera(): void {
+        try {
+            this.log(`Setting up camera with resolution: ${this.captureResolution}px`);
+            
+            // @ts-ignore - Lens Studio API
+            const cameraRequest = CameraModule.createCameraRequest();
+            
+            // Set the camera ID (Default_Color works for most cases)
+            // @ts-ignore - Lens Studio API
+            cameraRequest.cameraId = CameraModule.CameraId.Default_Color;
+            
+            // Set custom resolution - imageSmallerDimension controls the smaller edge
+            // For 512, this gives us approximately 512x384 or similar aspect ratio
+            cameraRequest.imageSmallerDimension = this.captureResolution;
+            
+            // Request camera - returns a texture that updates continuously
+            this._cameraTexture = this.cameraModule.requestCamera(cameraRequest);
+            
+            if (!this._cameraTexture) {
+                this.logError('Failed to get camera texture');
+                return;
+            }
+            
+            // Set up frame callback to know when camera is ready
+            // @ts-ignore - Lens Studio API
+            const provider = this._cameraTexture.control as CameraTextureProvider;
+            if (provider && provider.onNewFrame) {
+                provider.onNewFrame.add((frame: any) => {
+                    if (!this._cameraReady) {
+                        // @ts-ignore
+                        const width = this._cameraTexture!.getWidth();
+                        // @ts-ignore
+                        const height = this._cameraTexture!.getHeight();
+                        this.log(`Camera ready: ${width}x${height}`);
+                        this._cameraReady = true;
+                        
+                        // Trigger test capture if enabled
+                        if (this.testCaptureOnStartup) {
+                            this.triggerTestCapture();
+                        }
+                    }
+                });
+                this.log('Camera frame callback registered');
+            } else {
+                // Fallback - assume ready after a short delay
+                this.log('No onNewFrame event, assuming camera ready');
+                this._cameraReady = true;
+                
+                // Trigger test capture if enabled (with small delay for fallback case)
+                if (this.testCaptureOnStartup) {
+                    this.createEvent('DelayedCallbackEvent').bind(() => {
+                        this.triggerTestCapture();
+                    });
+                }
+            }
+            
+        } catch (error) {
+            this.logError(`Failed to setup camera: ${error}`);
+        }
     }
     
     private subscribeToEvents(): void {
@@ -76,7 +196,7 @@ export class CameraCapture extends BaseScriptComponent {
         });
         
         this._isSubscribed = true;
-        this.log('✅ Subscribed to camera capture requests');
+        this.log('Subscribed to camera capture requests');
         this.log('Say "What am I looking at?" to trigger camera capture');
     }
     
@@ -86,106 +206,142 @@ export class CameraCapture extends BaseScriptComponent {
      * Handle a camera capture request from the server.
      */
     private handleCaptureRequest(request: CameraCaptureRequest): void {
+        // Prevent duplicate captures
+        if (this._isCapturing) {
+            this.log('Already capturing, ignoring duplicate request');
+            return;
+        }
+        
         print('');
-        print('📸 ================================================');
-        print('📸 CAMERA CAPTURE REQUEST RECEIVED!');
-        print(`📸 Request ID: ${request.request_id}`);
-        print(`📸 Context: ${request.text || '(none)'}`);
-        print('📸 Capturing image...');
-        print('📸 ================================================');
+        print('================================================');
+        print('CAMERA CAPTURE REQUEST RECEIVED!');
+        print(`Request ID: ${request.request_id}`);
+        print(`Context: ${request.text || '(none)'}`);
+        print('Capturing high-resolution still image...');
+        print('================================================');
         print('');
         
         this._pendingRequest = request;
+        this._isCapturing = true;
         
-        // Capture on next frame to ensure camera has latest image
-        this.createEvent('UpdateEvent').bind(() => {
-            this.captureAndSend();
-        });
+        // Capture the image using CameraModule
+        this.captureAndSend();
     }
     
     /**
      * Capture the current camera frame and send it to the server.
+     * Uses the pre-initialized camera texture at the configured resolution.
      */
     private captureAndSend(): void {
+        // Check if camera is ready
+        if (!this._cameraTexture || !this._cameraReady) {
+            this.logError('Camera not ready! Make sure CameraModule is initialized.');
+            this._pendingRequest = null;
+            this._isCapturing = false;
+            return;
+        }
+        
         try {
-            const imageBase64 = this.captureToBase64();
+            // @ts-ignore - Lens Studio API
+            const width = this._cameraTexture.getWidth();
+            // @ts-ignore - Lens Studio API
+            const height = this._cameraTexture.getHeight();
+            this.log(`Capturing frame: ${width}x${height}`);
             
-            if (!imageBase64) {
-                this.logError('Failed to capture camera image');
-                this._pendingRequest = null;
-                return;
-            }
+            // Encode and send the current frame
+            this.encodeAndSendTexture(this._cameraTexture);
             
-            this.log(`📸 Captured image: ${imageBase64.length} base64 chars`);
-            
-            // Send to server via EstuaryManager
-            const manager = EstuaryManager.instance;
-            if (!manager) {
-                this.logError('EstuaryManager not available');
-                return;
-            }
-            
-            manager.sendCameraImage(
-                imageBase64,
-                'image/jpeg',
-                this._pendingRequest?.request_id,
-                this._pendingRequest?.text
-            );
-            
-            print('📸 Image sent to server for analysis!');
+        } catch (error) {
+            this.logError(`Frame capture failed: ${error}`);
             this._pendingRequest = null;
-            
-        } catch (e) {
-            this.logError(`Error capturing camera: ${e}`);
-            this._pendingRequest = null;
+            this._isCapturing = false;
         }
     }
     
     /**
-     * Capture the current camera frame to a base64 string.
-     * @returns Base64-encoded JPEG image, or null if capture failed
+     * Encode the captured texture to Base64 and send to server.
      */
-    private captureToBase64(): string | null {
-        try {
-            if (!this.cameraTexture) {
-                this.logError('No camera texture configured');
-                return null;
-            }
-            
-            // Method 1: Use Lens Studio's Base64 global API
-            // @ts-ignore - Lens Studio global API
-            if (typeof Base64 !== 'undefined' && Base64.encode) {
-                // @ts-ignore
-                const encoded = Base64.encode(this.cameraTexture);
-                this.log('Used Base64.encode() for texture encoding');
-                return encoded;
-            }
-            
-            // Method 2: Check for encodeToBase64 on texture
-            // @ts-ignore
-            if (this.cameraTexture.encodeToBase64) {
-                // @ts-ignore
-                const encoded = this.cameraTexture.encodeToBase64();
-                this.log('Used texture.encodeToBase64() for encoding');
-                return encoded;
-            }
-            
-            // Method 3: Use EncodeTexture API if available
-            // @ts-ignore
-            if (typeof EncodeTexture !== 'undefined') {
-                // @ts-ignore
-                const encoded = EncodeTexture.encodeToBase64(this.cameraTexture, 'jpeg', 85);
-                this.log('Used EncodeTexture API for encoding');
-                return encoded;
-            }
-            
-            this.logError('No texture encoding method available in this Lens Studio version');
-            return null;
-            
-        } catch (e) {
-            this.logError(`Failed to encode texture: ${e}`);
-            return null;
+    private encodeAndSendTexture(texture: Texture): void {
+        this.log('Encoding texture to Base64...');
+        
+        // @ts-ignore - Lens Studio global API
+        if (typeof Base64 === 'undefined' || !Base64.encodeTextureAsync) {
+            this.logError('Base64.encodeTextureAsync not available');
+            this._pendingRequest = null;
+            this._isCapturing = false;
+            return;
         }
+        
+        // Use IntermediateQuality for good balance of quality and size
+        // At 512px resolution, this produces reasonably sized payloads
+        // @ts-ignore - Lens Studio global enums
+        const compressionQuality = typeof CompressionQuality !== 'undefined' 
+            ? CompressionQuality.IntermediateQuality 
+            : 2; // IntermediateQuality = 2
+        
+        // @ts-ignore - Lens Studio global enums
+        const encodingType = typeof EncodingType !== 'undefined'
+            ? EncodingType.Jpg
+            : 1; // Jpg = 1
+        
+        // @ts-ignore - Lens Studio API
+        Base64.encodeTextureAsync(
+            texture,
+            (encodedString: string) => {
+                this.log(`Encoded texture: ${encodedString.length} chars`);
+                this.sendToServer(encodedString);
+            },
+            () => {
+                this.logError('Base64.encodeTextureAsync failed');
+                this._pendingRequest = null;
+                this._isCapturing = false;
+            },
+            compressionQuality,
+            encodingType
+        );
+    }
+    
+    /**
+     * Send the encoded image to the Estuary server.
+     */
+    private sendToServer(imageBase64: string): void {
+        const manager = EstuaryManager.instance;
+        if (!manager) {
+            this.logError('EstuaryManager not available');
+            this._pendingRequest = null;
+            this._isCapturing = false;
+            return;
+        }
+        
+        manager.sendCameraImage(
+            imageBase64,
+            'image/jpeg',
+            this._pendingRequest?.request_id,
+            this._pendingRequest?.text
+        );
+        
+        print('');
+        print('================================================');
+        print('IMAGE SENT TO SERVER FOR ANALYSIS!');
+        print('================================================');
+        print('');
+        
+        this._pendingRequest = null;
+        this._isCapturing = false;
+    }
+    
+    /**
+     * Trigger the test capture on startup.
+     */
+    private triggerTestCapture(): void {
+        print('');
+        print('================================================');
+        print('TEST CAPTURE ON STARTUP ENABLED');
+        print('Capturing and sending test image...');
+        print('================================================');
+        print('');
+        
+        this.manualCapture('Test capture on startup - what do you see?');
     }
     
     /**
@@ -193,11 +349,17 @@ export class CameraCapture extends BaseScriptComponent {
      * Call this from another script or via a tap event.
      */
     manualCapture(text?: string): void {
+        if (this._isCapturing) {
+            this.log('Already capturing, ignoring manual trigger');
+            return;
+        }
+        
         this.log('Manual capture triggered');
         this._pendingRequest = {
             request_id: 'manual-' + Date.now(),
             text: text || 'What do you see?'
         };
+        this._isCapturing = true;
         this.captureAndSend();
     }
     

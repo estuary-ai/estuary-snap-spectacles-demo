@@ -255,14 +255,15 @@ export class EstuaryManager extends EventEmitter<any> {
      * @param mimeType MIME type of the image (e.g., 'image/jpeg')
      * @param requestId Optional request ID if responding to a camera_capture_request
      * @param text Optional text context to send with the image
+     * @param sampleRate TTS output sample rate (default: 16000 for Spectacles hardware)
      */
-    sendCameraImage(imageBase64: string, mimeType: string = 'image/jpeg', requestId?: string, text?: string): void {
+    sendCameraImage(imageBase64: string, mimeType: string = 'image/jpeg', requestId?: string, text?: string, sampleRate: number = 16000): void {
         if (!this._client.isConnected) {
             this.logError('Cannot send camera image: not connected');
             return;
         }
 
-        this._client.sendCameraImage(imageBase64, mimeType, requestId, text);
+        this._client.sendCameraImage(imageBase64, mimeType, requestId, text, sampleRate);
     }
 
     /**

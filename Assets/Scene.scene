@@ -216,7 +216,7 @@
   PrefabRemaps:
     []
   Name: ImageEndpointTest
-  Enabled: true
+  Enabled: false
   Layers: 1
   LocalTransform: !<TransformEntity>
     Position: {x: 0.000000, y: 0.000000, z: 0.000000}
@@ -355,15 +355,17 @@
   ScriptAsset: !<reference> 733f6a95-3e4d-4328-8094-851235be6b03
   ScriptInputsDefault:
     debugMode: true
+    useSnapAccountId: true
     userIdField: true
   ScriptTypesDefault:
     {}
   ScriptInputs:
     "":
-      apiKey: est_EAbbUyynaZluEzJOr8EEkm6QrCoiv6mXMxiEBu1hU6Q
-      characterId: ff4933cf-9311-4d47-9997-3e73e0c9b3fd
-      serverUrl: "http://192.168.1.133:4001"
+      apiKey: est_ahYJqrU6hEn3Ebo-q2S9AvbgHHzakYGknVMfqCS8FwQ
+      characterId: 530ab58f-aac1-41b3-ad47-08f8054ab24a
+      serverUrl: "ws://localhost:4001"
       debugMode: true
+      useSnapAccountId: true
       userIdField: ""
   ScriptTypes:
     "":

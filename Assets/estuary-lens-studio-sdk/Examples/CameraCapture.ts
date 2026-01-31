@@ -17,9 +17,10 @@
  * The server will detect the vision intent and request a camera capture.
  * This component will automatically capture and send the image.
  * 
- * Testing:
- * Enable "testCaptureOnStartup" in the Inspector to automatically capture and send
- * a photo when the Lens starts. Useful for testing without voice commands.
+ * Vision Acknowledgment:
+ * Enable "enableVisionAcknowledgment" to have the character say a quick phrase
+ * (e.g., "Let me take a look!") before analyzing the image. This provides
+ * immediate feedback while the camera captures and processes the image.
  * 
  * Resolution:
  * - Default is 512px (smaller dimension), which gives good quality while keeping payload small
@@ -57,12 +58,13 @@ export class CameraCapture extends BaseScriptComponent {
     captureResolution: number = 512;
     
     /**
-     * Test mode: automatically capture and send a photo on startup.
-     * Useful for testing camera capture without voice commands.
+     * Enable vision acknowledgment.
+     * When true, the character will say a quick phrase (e.g., "Let me take a look!")
+     * before analyzing the captured image. This provides immediate feedback to the user.
      */
     @input
-    @hint("Automatically capture and send a photo on startup (for testing)")
-    testCaptureOnStartup: boolean = false;
+    @hint("Character says acknowledgment before analyzing image")
+    enableVisionAcknowledgment: boolean = true;
     
     // ==================== CameraModule ====================
     
@@ -155,11 +157,6 @@ export class CameraCapture extends BaseScriptComponent {
                         const height = this._cameraTexture!.getHeight();
                         this.log(`Camera ready: ${width}x${height}`);
                         this._cameraReady = true;
-                        
-                        // Trigger test capture if enabled
-                        if (this.testCaptureOnStartup) {
-                            this.triggerTestCapture();
-                        }
                     }
                 });
                 this.log('Camera frame callback registered');
@@ -167,13 +164,6 @@ export class CameraCapture extends BaseScriptComponent {
                 // Fallback - assume ready after a short delay
                 this.log('No onNewFrame event, assuming camera ready');
                 this._cameraReady = true;
-                
-                // Trigger test capture if enabled (with small delay for fallback case)
-                if (this.testCaptureOnStartup) {
-                    this.createEvent('DelayedCallbackEvent').bind(() => {
-                        this.triggerTestCapture();
-                    });
-                }
             }
             
         } catch (error) {
@@ -195,9 +185,34 @@ export class CameraCapture extends BaseScriptComponent {
             this.handleCaptureRequest(request);
         });
         
+        // Send vision acknowledgment preference to backend when connected
+        // If already connected, send immediately; otherwise wait for connection
+        if (manager.isConnected) {
+            this.sendVisionPreference();
+        }
+        manager.on('connectionStateChanged', (state: any) => {
+            if (state === 'connected') {
+                this.sendVisionPreference();
+            }
+        });
+        
         this._isSubscribed = true;
         this.log('Subscribed to camera capture requests');
+        this.log(`Vision acknowledgment: ${this.enableVisionAcknowledgment ? 'enabled' : 'disabled'}`);
         this.log('Say "What am I looking at?" to trigger camera capture');
+    }
+    
+    /**
+     * Send the vision acknowledgment preference to the backend.
+     */
+    private sendVisionPreference(): void {
+        const manager = EstuaryManager.instance;
+        if (!manager || !manager.isConnected) return;
+        
+        manager.updatePreferences({
+            enableVisionAcknowledgment: this.enableVisionAcknowledgment
+        });
+        this.log(`Sent vision acknowledgment preference: ${this.enableVisionAcknowledgment}`);
     }
     
     // ==================== Camera Capture ====================
@@ -328,20 +343,6 @@ export class CameraCapture extends BaseScriptComponent {
         
         this._pendingRequest = null;
         this._isCapturing = false;
-    }
-    
-    /**
-     * Trigger the test capture on startup.
-     */
-    private triggerTestCapture(): void {
-        print('');
-        print('================================================');
-        print('TEST CAPTURE ON STARTUP ENABLED');
-        print('Capturing and sending test image...');
-        print('================================================');
-        print('');
-        
-        this.manualCapture('Test capture on startup - what do you see?');
     }
     
     /**

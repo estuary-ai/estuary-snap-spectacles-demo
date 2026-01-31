@@ -28,7 +28,7 @@
   ScriptInputsHidden:
     captureResolution: false
     debugMode: false
-    testCaptureOnStartup: false
+    enableVisionAcknowledgment: false
   ScriptTypesHidden:
     {}
   ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
@@ -40,11 +40,11 @@
   DefaultScriptInputs:
     - debugMode: true
       captureResolution: !<float> 512.000000
-      testCaptureOnStartup: false
+      enableVisionAcknowledgment: true
   ScriptTypes:
     -
       {}
   InputLines:
     - '// @input bool debugMode = true {"hint":"Enable debug logging"}'
     - '// @input float captureResolution = 512 {"hint":"Camera capture resolution (smaller dimension in pixels)"}'
-    - '// @input bool testCaptureOnStartup {"hint":"Automatically capture and send a photo on startup (for testing)"}'
+    - '// @input bool enableVisionAcknowledgment = true {"hint":"Character says acknowledgment before analyzing image"}'

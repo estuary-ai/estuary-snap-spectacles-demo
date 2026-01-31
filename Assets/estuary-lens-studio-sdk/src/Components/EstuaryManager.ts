@@ -8,7 +8,7 @@
  * 3. Access via EstuaryManager.instance or import directly
  */
 
-import { EstuaryClient } from '../Core/EstuaryClient';
+import { EstuaryClient, ClientPreferences } from '../Core/EstuaryClient';
 import { EstuaryConfig, validateConfig } from '../Core/EstuaryConfig';
 import { ConnectionState, EventEmitter, CameraCaptureRequest } from '../Core/EstuaryEvents';
 import { SessionInfo } from '../Models/SessionInfo';
@@ -264,6 +264,21 @@ export class EstuaryManager extends EventEmitter<any> {
         }
 
         this._client.sendCameraImage(imageBase64, mimeType, requestId, text, sampleRate);
+    }
+
+    /**
+     * Update session preferences on the server.
+     * Use this to configure behaviors like vision acknowledgment.
+     * @param preferences The preferences to update
+     */
+    updatePreferences(preferences: ClientPreferences): void {
+        if (!this._client.isConnected) {
+            this.logError('Cannot update preferences: not connected');
+            return;
+        }
+
+        this._client.updatePreferences(preferences);
+        this.log(`Updated preferences: enableVisionAcknowledgment=${preferences.enableVisionAcknowledgment}`);
     }
 
     /**

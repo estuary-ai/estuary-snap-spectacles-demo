@@ -320,14 +320,14 @@
   ScriptInputsDefault:
     debugMode: true
     captureResolution: true
-    testCaptureOnStartup: true
+    enableVisionAcknowledgment: true
   ScriptTypesDefault:
     {}
   ScriptInputs:
     "":
       debugMode: true
       captureResolution: !<float> 512.000000
-      testCaptureOnStartup: false
+      enableVisionAcknowledgment: true
   ScriptTypes:
     "":
       {}
@@ -360,9 +360,9 @@
     {}
   ScriptInputs:
     "":
-      apiKey: est_WOElJQh_WlHNequHsTpMXCGQjKzbenOQOU2gPumrvRM
+      apiKey: est_EAbbUyynaZluEzJOr8EEkm6QrCoiv6mXMxiEBu1hU6Q
       characterId: ff4933cf-9311-4d47-9997-3e73e0c9b3fd
-      serverUrl: "ws://192.168.1.133:4001"
+      serverUrl: "http://192.168.1.133:4001"
       debugMode: true
       userIdField: ""
   ScriptTypes:

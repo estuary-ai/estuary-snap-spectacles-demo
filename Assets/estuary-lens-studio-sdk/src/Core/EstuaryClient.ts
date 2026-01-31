@@ -79,6 +79,14 @@ interface AuthenticateData {
 }
 
 /**
+ * Preferences that can be updated at any time during the session.
+ */
+export interface ClientPreferences {
+    /** When true, backend will generate a voice acknowledgment before camera capture */
+    enableVisionAcknowledgment?: boolean;
+}
+
+/**
  * Text message payload.
  */
 interface TextPayload {
@@ -317,6 +325,21 @@ export class EstuaryClient extends EventEmitter<any> {
 
         this.emitSocketEvent('stop_voice', null);
         this.log('Requested server to stop voice mode');
+    }
+
+    /**
+     * Update session preferences on the server.
+     * Can be called at any time while connected to update settings like vision acknowledgment.
+     * @param preferences - The preferences to update
+     */
+    updatePreferences(preferences: ClientPreferences): void {
+        if (!this.isConnected) {
+            this.logError('Cannot update preferences: not connected');
+            return;
+        }
+
+        this.emitSocketEvent('update_preferences', preferences);
+        this.log(`Updated preferences: ${JSON.stringify(preferences)}`);
     }
 
     /**

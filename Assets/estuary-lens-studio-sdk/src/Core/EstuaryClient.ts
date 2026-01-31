@@ -393,6 +393,16 @@ export class EstuaryClient extends EventEmitter<any> {
         this.removeAllListeners();
     }
 
+    /**
+     * Process the send queue.
+     * Call this periodically (e.g., from an update loop) to ensure queued messages
+     * like ping/pong responses are sent even when no new messages are being added.
+     * This prevents connection timeouts during periods of silence.
+     */
+    tick(): void {
+        this.processSendQueue();
+    }
+
     // ==================== Private Methods ====================
 
     private connectInternal(): void {

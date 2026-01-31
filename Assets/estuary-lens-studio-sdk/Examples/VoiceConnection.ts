@@ -28,6 +28,7 @@ import { EstuaryCharacter } from '../src/Components/EstuaryCharacter';
 import { EstuaryMicrophone, MicrophoneRecorder } from '../src/Components/EstuaryMicrophone';
 import { EstuaryCredentials, IEstuaryCredentials, getCredentialsFromSceneObject } from '../src/Components/EstuaryCredentials';
 import { EstuaryActionManager, EstuaryActions } from '../src/Components/EstuaryActionManager';
+import { EstuaryManager } from '../src/Components/EstuaryManager';
 import { EstuaryConfig } from '../src/Core/EstuaryConfig';
 import { setInternetModule } from '../src/Core/EstuaryClient';
 import { SessionInfo } from '../src/Models/SessionInfo';
@@ -120,14 +121,11 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     /** Inactivity timeout in ms (10 minutes) */
     private readonly INACTIVITY_TIMEOUT_MS: number = 10 * 60 * 1000;
     
-    /** Keepalive interval in ms (15 seconds - keeps server connection alive and flushes send queue) */
-    private readonly KEEPALIVE_INTERVAL_MS: number = 15 * 1000;
+    /** Last queue tick timestamp */
+    private lastTickTime: number = 0;
     
-    /** Silent audio chunk (tiny PCM16 silence, base64 encoded) - used for keepalive */
-    private readonly SILENT_AUDIO_CHUNK: string = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-    
-    /** Last keepalive sent timestamp */
-    private lastKeepaliveTime: number = 0;
+    /** Tick interval in ms (100ms - processes send queue to flush pending pong responses) */
+    private readonly TICK_INTERVAL_MS: number = 100;
     
     /** Whether we've already disconnected due to inactivity */
     private disconnectedDueToInactivity: boolean = false;
@@ -358,9 +356,9 @@ export class SimpleAutoConnect extends BaseScriptComponent {
             print(`  Session: ${session.sessionId}`);
             print("===========================================");
             
-            // Initialize activity tracking and keepalive timer
+            // Initialize activity tracking
             this.recordActivity();
-            this.lastKeepaliveTime = Date.now();
+            this.lastTickTime = Date.now();
             this.disconnectedDueToInactivity = false;
             
             // Start voice session FIRST - this enables audio streaming
@@ -445,15 +443,15 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         // MicrophoneRecorder uses event-based delivery, no per-frame processing needed
         // DynamicAudioOutput handles audio playback internally via native AudioComponent
         
-        // Check for inactivity timeout and send keepalives
-        this.checkInactivityAndKeepalive();
+        // Check for inactivity timeout and process send queue
+        this.checkInactivityAndTick();
     }
     
     /**
-     * Check for inactivity timeout and send keepalive pings to server.
+     * Check for inactivity timeout and process send queue.
      * Disconnects after 10 minutes of no user activity.
      */
-    private checkInactivityAndKeepalive(): void {
+    private checkInactivityAndTick(): void {
         if (!this.character?.isConnected) {
             return;
         }
@@ -475,34 +473,14 @@ export class SimpleAutoConnect extends BaseScriptComponent {
             }
         }
         
-        // Send keepalive every 15 seconds to keep server connection alive
+        // Process send queue periodically to ensure ping/pong responses are sent
         // This is critical because:
         // 1. The SDK's send queue may have pending pong responses that need to be flushed
-        // 2. The server may have an idle timeout separate from ping/pong
-        // 3. During silence (no voice), no audio is sent, so the queue may stall
-        if (now - this.lastKeepaliveTime >= this.KEEPALIVE_INTERVAL_MS) {
-            this.lastKeepaliveTime = now;
-            this.sendKeepalive();
-        }
-    }
-    
-    /**
-     * Send a keepalive to prevent server timeout and flush the send queue.
-     * Sends a tiny silent audio chunk which:
-     * 1. Triggers the SDK's sendRaw() to process any queued messages (like pong)
-     * 2. Keeps the server's session alive
-     * 3. Has no audible effect (silence)
-     */
-    private sendKeepalive(): void {
-        if (!this.character?.isConnected || !this.character.isVoiceSessionActive) {
-            return;
-        }
-        
-        // Send silent audio chunk to flush the queue and keep connection alive
-        this.character.streamAudio(this.SILENT_AUDIO_CHUNK);
-        
-        if (this.credentials?.debugMode) {
-            this.log("Sent keepalive (silent audio)");
+        // 2. During silence (no voice), no audio is sent, so the queue may stall
+        // 3. This has zero API cost - just processes already-queued messages
+        if (now - this.lastTickTime >= this.TICK_INTERVAL_MS) {
+            this.lastTickTime = now;
+            EstuaryManager.instance.tick();
         }
     }
     

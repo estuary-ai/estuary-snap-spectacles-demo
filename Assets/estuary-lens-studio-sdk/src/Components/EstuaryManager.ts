@@ -292,6 +292,16 @@ export class EstuaryManager extends EventEmitter<any> {
         EstuaryManager._instance = null;
     }
 
+    /**
+     * Process the client's send queue.
+     * Call this periodically (e.g., every frame or every few seconds) to ensure
+     * queued messages like ping/pong responses are sent even during silence.
+     * This prevents connection timeouts when no audio/text is being sent.
+     */
+    tick(): void {
+        this._client.tick();
+    }
+
     // ==================== Private Methods ====================
 
     private initialize(): void {

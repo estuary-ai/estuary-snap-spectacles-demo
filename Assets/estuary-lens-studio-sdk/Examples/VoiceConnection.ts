@@ -112,6 +112,26 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     private updateEvent: SceneEvent | null = null;
     private audioInitialized: boolean = false;
     
+    // ==================== Inactivity Tracking ====================
+    
+    /** Last activity timestamp (ms) */
+    private lastActivityTime: number = 0;
+    
+    /** Inactivity timeout in ms (10 minutes) */
+    private readonly INACTIVITY_TIMEOUT_MS: number = 10 * 60 * 1000;
+    
+    /** Keepalive interval in ms (15 seconds - keeps server connection alive and flushes send queue) */
+    private readonly KEEPALIVE_INTERVAL_MS: number = 15 * 1000;
+    
+    /** Silent audio chunk (tiny PCM16 silence, base64 encoded) - used for keepalive */
+    private readonly SILENT_AUDIO_CHUNK: string = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    
+    /** Last keepalive sent timestamp */
+    private lastKeepaliveTime: number = 0;
+    
+    /** Whether we've already disconnected due to inactivity */
+    private disconnectedDueToInactivity: boolean = false;
+    
     // ==================== Lifecycle ====================
     
     onAwake() {
@@ -338,6 +358,11 @@ export class SimpleAutoConnect extends BaseScriptComponent {
             print(`  Session: ${session.sessionId}`);
             print("===========================================");
             
+            // Initialize activity tracking and keepalive timer
+            this.recordActivity();
+            this.lastKeepaliveTime = Date.now();
+            this.disconnectedDueToInactivity = false;
+            
             // Start voice session FIRST - this enables audio streaming
             this.character!.startVoiceSession();
             
@@ -345,9 +370,12 @@ export class SimpleAutoConnect extends BaseScriptComponent {
             this.startMicStream();
         });
         
-        // Disconnected
+        // Disconnected - show obvious log
         this.character.on('disconnected', () => {
-            this.log("Disconnected");
+            if (!this.disconnectedDueToInactivity) {
+                // Disconnected by server or other reason (not our inactivity timeout)
+                this.logDisconnect("Connection closed by server");
+            }
             if (this.microphone) {
                 this.microphone.stopRecording();
             }
@@ -355,6 +383,8 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         
         // AI response (text)
         this.character.on('botResponse', (response: BotResponse) => {
+            // Record activity - conversation is happening
+            this.recordActivity();
             if (response.isFinal) {
                 print(`[AI] ${response.text}`);
             }
@@ -362,6 +392,9 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         
         // AI voice response (audio) - play using DynamicAudioOutput
         this.character.on('voiceReceived', (voice: BotVoice) => {
+            // Record activity - voice response received
+            this.recordActivity();
+            
             if (this.credentials?.debugMode) {
                 this.log(`Voice audio received: ${voice.audio?.length || 0} chars base64, chunk ${voice.chunkIndex}`);
             }
@@ -376,6 +409,8 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         
         // Handle interrupts - stop audio when user starts speaking
         this.character.on('interrupt', () => {
+            // Record activity - user interrupted
+            this.recordActivity();
             if (this.dynamicAudioOutput) {
                 this.dynamicAudioOutput.interruptAudioOutput();
                 this.log("Audio interrupted");
@@ -384,6 +419,8 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         
         // STT from Deepgram
         this.character.on('transcript', (stt: SttResponse) => {
+            // Record activity - user is speaking
+            this.recordActivity();
             if (stt.isFinal) {
                 print(`[You] ${stt.text}`);
             }
@@ -407,6 +444,92 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     private onUpdate(): void {
         // MicrophoneRecorder uses event-based delivery, no per-frame processing needed
         // DynamicAudioOutput handles audio playback internally via native AudioComponent
+        
+        // Check for inactivity timeout and send keepalives
+        this.checkInactivityAndKeepalive();
+    }
+    
+    /**
+     * Check for inactivity timeout and send keepalive pings to server.
+     * Disconnects after 10 minutes of no user activity.
+     */
+    private checkInactivityAndKeepalive(): void {
+        if (!this.character?.isConnected) {
+            return;
+        }
+        
+        const now = Date.now();
+        
+        // Check for inactivity timeout (10 minutes)
+        if (this.lastActivityTime > 0) {
+            const inactiveTime = now - this.lastActivityTime;
+            if (inactiveTime >= this.INACTIVITY_TIMEOUT_MS && !this.disconnectedDueToInactivity) {
+                this.disconnectedDueToInactivity = true;
+                
+                // Disable auto-reconnect so it stays disconnected
+                this.character.autoReconnect = false;
+                
+                this.logDisconnect("INACTIVITY TIMEOUT - No activity for 10 minutes");
+                this.character.disconnect();
+                return;
+            }
+        }
+        
+        // Send keepalive every 15 seconds to keep server connection alive
+        // This is critical because:
+        // 1. The SDK's send queue may have pending pong responses that need to be flushed
+        // 2. The server may have an idle timeout separate from ping/pong
+        // 3. During silence (no voice), no audio is sent, so the queue may stall
+        if (now - this.lastKeepaliveTime >= this.KEEPALIVE_INTERVAL_MS) {
+            this.lastKeepaliveTime = now;
+            this.sendKeepalive();
+        }
+    }
+    
+    /**
+     * Send a keepalive to prevent server timeout and flush the send queue.
+     * Sends a tiny silent audio chunk which:
+     * 1. Triggers the SDK's sendRaw() to process any queued messages (like pong)
+     * 2. Keeps the server's session alive
+     * 3. Has no audible effect (silence)
+     */
+    private sendKeepalive(): void {
+        if (!this.character?.isConnected || !this.character.isVoiceSessionActive) {
+            return;
+        }
+        
+        // Send silent audio chunk to flush the queue and keep connection alive
+        this.character.streamAudio(this.SILENT_AUDIO_CHUNK);
+        
+        if (this.credentials?.debugMode) {
+            this.log("Sent keepalive (silent audio)");
+        }
+    }
+    
+    /**
+     * Record user activity to reset the inactivity timer.
+     * Called when user sends audio, text, or interacts with the system.
+     */
+    private recordActivity(): void {
+        this.lastActivityTime = Date.now();
+        this.disconnectedDueToInactivity = false;
+    }
+    
+    /**
+     * Display a very obvious disconnect log.
+     */
+    private logDisconnect(reason: string): void {
+        print("");
+        print("╔══════════════════════════════════════════════════════════════════╗");
+        print("║                                                                  ║");
+        print("║   ⚠️  ESTUARY SDK DISCONNECTED  ⚠️                                ║");
+        print("║                                                                  ║");
+        print("╠══════════════════════════════════════════════════════════════════╣");
+        print(`║   Reason: ${reason.padEnd(54)}║`);
+        print(`║   Time: ${new Date().toISOString().padEnd(56)}║`);
+        print("║                                                                  ║");
+        print("╚══════════════════════════════════════════════════════════════════╝");
+        print("");
     }
     
     // ==================== Public Methods ====================
@@ -414,6 +537,8 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     /** Send a text message to the AI */
     sendMessage(text: string): void {
         if (this.character?.isConnected) {
+            // Record activity - user is sending a message
+            this.recordActivity();
             this.character.sendText(text);
         }
     }

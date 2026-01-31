@@ -354,6 +354,8 @@
   Enabled: true
   ScriptAsset: !<reference> 733f6a95-3e4d-4328-8094-851235be6b03
   ScriptInputsDefault:
+    characterId: true
+    serverUrl: true
     debugMode: true
     useSnapAccountId: true
     userIdField: true
@@ -361,9 +363,9 @@
     {}
   ScriptInputs:
     "":
-      apiKey: est_ahYJqrU6hEn3Ebo-q2S9AvbgHHzakYGknVMfqCS8FwQ
-      characterId: 530ab58f-aac1-41b3-ad47-08f8054ab24a
-      serverUrl: "ws://localhost:4001"
+      apiKey: est_6gUXJjPnQ_ja3Cz3Uq8c3h2gSMYIp_CTCmxGvtRa8qs
+      characterId: 814bdbab-4fc9-4e84-9414-e96fdae58443
+      serverUrl: "wss://api.estuary-ai.com"
       debugMode: true
       useSnapAccountId: true
       userIdField: ""

@@ -293,8 +293,9 @@ export class EstuaryCredentials extends BaseScriptComponent implements IEstuaryC
             // If we got a display name, use it to create a stable user ID
             if (displayName && displayName.length > 0) {
                 this.log(`Got displayName from userContextSystem: ${displayName}`);
-                // Create a stable hash from display name prefixed with snap_
-                return `snap_${this.hashString(displayName)}`;
+                // Create a stable hash from display name with spectacles_ prefix
+                // Format matches the original: spectacles_ + identifier
+                return `spectacles_${this.hashString(displayName)}`;
             }
             
             // Try requestDisplayName with callback for async retrieval
@@ -323,15 +324,17 @@ export class EstuaryCredentials extends BaseScriptComponent implements IEstuaryC
             if (typeof userContextSystem.requestDisplayName === 'function') {
                 userContextSystem.requestDisplayName((displayName: string) => {
                     if (displayName && displayName.length > 0) {
-                        const snapUserId = `snap_${this.hashString(displayName)}`;
+                        // Format: spectacles_ + hash of displayName (consistent per account)
+                        const snapUserId = `spectacles_${this.hashString(displayName)}`;
                         const store = global.persistentStorageSystem.store;
                         
                         // Cache this for next session
                         store.putString(SNAP_USER_ID_CACHE_KEY, snapUserId);
                         this.log(`Async: Cached Snap user ID for next session: ${snapUserId}`);
                         
-                        // If we're still using a generated ID, update to the Snap ID
-                        if (!this._usingSnapAccountId && this._resolvedUserId.startsWith('spectacles_')) {
+                        // If we're not yet using a Snap account ID, update to use it
+                        // Check if current ID looks like a timestamp-based generated ID (longer format)
+                        if (!this._usingSnapAccountId) {
                             this._resolvedUserId = snapUserId;
                             this._usingSnapAccountId = true;
                             store.putString(USER_ID_STORAGE_KEY, snapUserId);

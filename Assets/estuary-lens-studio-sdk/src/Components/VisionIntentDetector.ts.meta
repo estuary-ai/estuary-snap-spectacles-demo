@@ -29,9 +29,6 @@
     autoConnect: false
     confidenceThreshold: false
     debugMode: false
-    llmApiKey: false
-    llmEndpoint: false
-    llmModel: false
   ScriptTypesHidden:
     {}
   ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
@@ -41,19 +38,13 @@
   Attachments:
     []
   DefaultScriptInputs:
-    - llmApiKey: ""
-      llmEndpoint: "https://api.openai.com/v1/chat/completions"
-      llmModel: gpt-4o-mini
-      confidenceThreshold: 0.700000
+    - confidenceThreshold: 0.700000
       debugMode: true
       autoConnect: true
   ScriptTypes:
     -
       {}
   InputLines:
-    - '// @input string llmApiKey {"hint":"API key for LLM (OpenAI by default)"}'
-    - '// @input string llmEndpoint = "https://api.openai.com/v1/chat/completions" {"hint":"LLM API endpoint (default: OpenAI)"}'
-    - '// @input string llmModel = "gpt-4o-mini" {"hint":"LLM model for intent detection (gpt-4o-mini recommended)"}'
     - '// @input float confidenceThreshold = 0.7 {"hint":"Confidence threshold for triggering camera (0-1)"}'
     - '// @input bool debugMode = true {"hint":"Enable debug logging"}'
     - '// @input bool autoConnect = true {"hint":"Automatically connect to EstuaryCharacter"}'

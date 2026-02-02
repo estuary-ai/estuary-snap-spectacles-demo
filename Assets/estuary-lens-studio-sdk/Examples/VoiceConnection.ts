@@ -99,25 +99,18 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     // ==================== Vision Intent Detection (Natural Language Camera) ====================
     
     /**
-     * Enable LLM-based vision intent detection for natural language camera activation.
+     * Enable vision intent detection for natural language camera activation.
      * When enabled, phrases like "what do you think of this vase?" will trigger camera capture.
-     * Requires an LLM API key (OpenAI by default).
+     * Uses smart heuristic detection - no additional API key needed!
      */
     @input
     @hint("Enable natural language camera activation (e.g., 'what do you think of this vase?')")
     enableVisionIntentDetection: boolean = true;
     
     /**
-     * API key for the LLM used for vision intent detection.
-     * Leave empty to use heuristic-based detection (less accurate but no API needed).
-     */
-    @input
-    @hint("OpenAI API key for LLM-based intent detection (optional)")
-    visionLlmApiKey: string = "";
-    
-    /**
      * Confidence threshold for triggering camera capture (0-1).
      * Lower = more triggers, Higher = more selective.
+     * Default 0.7 balances sensitivity with avoiding false triggers.
      */
     @input
     @hint("Confidence threshold for camera trigger (0.0-1.0)")
@@ -258,7 +251,7 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         // Set up vision intent detector for natural language camera activation
         if (this.enableVisionIntentDetection) {
             this.visionIntentDetector = new VisionIntentDetector({
-                apiKey: this.visionLlmApiKey,
+                apiKey: '', // Uses heuristic detection - no external API needed
                 confidenceThreshold: this.visionConfidenceThreshold,
                 debugLogging: this.credentials!.debugMode
             });
@@ -266,11 +259,7 @@ export class SimpleAutoConnect extends BaseScriptComponent {
             // Connect to character to listen for transcripts
             this.visionIntentDetector.startListening(this.character);
             
-            if (this.visionLlmApiKey && this.visionLlmApiKey.length > 0) {
-                this.log("Vision intent detection enabled (LLM-based)");
-            } else {
-                this.log("Vision intent detection enabled (heuristic-based fallback)");
-            }
+            this.log("Vision intent detection enabled");
             this.log("Natural language phrases like 'what do you think of this vase?' will now trigger camera");
         }
         

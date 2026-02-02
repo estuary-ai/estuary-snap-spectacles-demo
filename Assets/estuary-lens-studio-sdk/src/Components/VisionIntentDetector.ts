@@ -1,9 +1,11 @@
 /**
- * VisionIntentDetector - Uses LLM to intelligently detect when camera capture should be activated.
+ * VisionIntentDetector - Intelligently detects when camera capture should be activated.
  * 
  * This component solves the problem of multimodal capture only activating for explicit commands
- * like "what am I looking at" by using an actual language model to understand natural language
+ * like "what am I looking at" by using smart heuristic detection to understand natural language
  * requests that imply visual context.
+ * 
+ * NO ADDITIONAL API KEY REQUIRED! Uses the existing Estuary connection.
  * 
  * Examples that will now trigger camera:
  * - "Hey what do you think of this vase I'm looking at"
@@ -12,17 +14,13 @@
  * - "What breed of dog is this?"
  * 
  * Setup in Lens Studio:
- * 1. Add this script to a SceneObject
- * 2. Connect the InternetModule for HTTP requests
- * 3. Set your LLM API key (OpenAI by default)
- * 4. The component will listen to STT transcripts and trigger camera capture when appropriate
+ * 1. Enable vision intent detection in SimpleAutoConnect (enabled by default)
+ * 2. Optionally adjust the confidence threshold (default: 0.7)
+ * 3. The component will listen to STT transcripts and trigger camera capture when appropriate
  * 
  * Integration with CameraCapture:
  * - Subscribe to the 'visionIntentDetected' event
  * - When triggered, call your camera capture logic
- * 
- * Note: This uses a lightweight LLM call (fast, cheap) just for intent classification,
- * not for generating responses. The actual vision analysis still happens on Estuary's backend.
  */
 
 import { EventEmitter, CameraCaptureRequest } from '../Core/EstuaryEvents';
@@ -32,20 +30,21 @@ import { SttResponse } from '../Models/SttResponse';
 import { getInternetModule } from '../Core/EstuaryClient';
 
 /**
- * Configuration for the LLM used for intent detection.
+ * Configuration for the vision intent detector.
+ * No API key needed - uses smart heuristic detection!
  */
 export interface VisionIntentConfig {
-    /** API endpoint for the LLM (default: OpenAI chat completions) */
-    endpoint?: string;
-    /** API key for the LLM service */
-    apiKey: string;
-    /** Model to use for intent detection (default: gpt-4o-mini for speed/cost) */
-    model?: string;
+    /** API key for optional LLM service (leave empty for heuristic detection) */
+    apiKey?: string;
     /** Whether to enable debug logging */
     debugLogging?: boolean;
     /** Confidence threshold for triggering camera (0-1, default: 0.7) */
     confidenceThreshold?: number;
-    /** Custom system prompt for intent detection (advanced) */
+    /** API endpoint for optional LLM (advanced, leave empty for heuristic) */
+    endpoint?: string;
+    /** Model to use if using LLM detection (advanced) */
+    model?: string;
+    /** Custom system prompt if using LLM detection (advanced) */
     customSystemPrompt?: string;
 }
 
@@ -521,9 +520,12 @@ export class VisionIntentDetector extends EventEmitter<any> {
 /**
  * VisionIntentDetectorComponent - Lens Studio component wrapper for VisionIntentDetector.
  * 
+ * Enables natural language camera activation - no additional API key needed!
+ * Uses smart heuristic detection to understand phrases like "what do you think of this vase?"
+ * 
  * Setup in Lens Studio:
  * 1. Create a SceneObject and add this script
- * 2. Set your LLM API key (OpenAI by default)
+ * 2. Adjust confidence threshold if needed
  * 3. This will automatically integrate with EstuaryCharacter and CameraCapture
  */
 @component
@@ -532,30 +534,9 @@ export class VisionIntentDetectorComponent extends BaseScriptComponent {
     // ==================== Configuration (set in Inspector) ====================
     
     /**
-     * API key for the LLM service (OpenAI by default).
-     */
-    @input
-    @hint("API key for LLM (OpenAI by default)")
-    llmApiKey: string = "";
-    
-    /**
-     * LLM API endpoint. Default is OpenAI's chat completions.
-     */
-    @input
-    @hint("LLM API endpoint (default: OpenAI)")
-    llmEndpoint: string = "https://api.openai.com/v1/chat/completions";
-    
-    /**
-     * Model to use for intent detection.
-     * gpt-4o-mini is recommended for speed and cost.
-     */
-    @input
-    @hint("LLM model for intent detection (gpt-4o-mini recommended)")
-    llmModel: string = "gpt-4o-mini";
-    
-    /**
      * Confidence threshold (0-1) for triggering camera capture.
-     * Lower = more sensitive, Higher = more selective.
+     * Lower = more sensitive (more triggers), Higher = more selective (fewer false positives).
+     * Default 0.7 balances sensitivity with avoiding false triggers.
      */
     @input
     @hint("Confidence threshold for triggering camera (0-1)")
@@ -609,17 +590,9 @@ export class VisionIntentDetectorComponent extends BaseScriptComponent {
             VisionIntentDetectorComponent._instance = this;
         }
         
-        // Validate API key
-        if (!this.llmApiKey || this.llmApiKey.length === 0) {
-            print("[VisionIntentDetector] ⚠️ No LLM API key configured - using heuristic fallback");
-            print("[VisionIntentDetector] For best results, set your OpenAI API key in the Inspector");
-        }
-        
-        // Create detector
+        // Create detector with heuristic detection (no external API needed)
         this._detector = new VisionIntentDetector({
-            endpoint: this.llmEndpoint,
-            apiKey: this.llmApiKey,
-            model: this.llmModel,
+            apiKey: '', // Uses heuristic detection - no external API needed
             confidenceThreshold: this.confidenceThreshold,
             debugLogging: this.debugMode
         });
@@ -632,7 +605,7 @@ export class VisionIntentDetectorComponent extends BaseScriptComponent {
         }
         
         this.log("VisionIntentDetectorComponent initialized");
-        this.log("This enables natural language camera activation (e.g., 'what do you think of this vase?')");
+        this.log("Natural language camera activation enabled (e.g., 'what do you think of this vase?')");
     }
     
     onDestroy() {

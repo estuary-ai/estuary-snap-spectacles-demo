@@ -28,8 +28,11 @@
   ScriptInputsHidden:
     credentialsObject: false
     dynamicAudioOutputObject: false
+    enableVisionIntentDetection: false
     internetModule: false
     microphoneRecorderObject: false
+    visionConfidenceThreshold: false
+    visionLlmApiKey: false
   ScriptTypesHidden:
     {}
   ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
@@ -43,6 +46,9 @@
       microphoneRecorderObject: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
       dynamicAudioOutputObject: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
       internetModule: !<reference.InternetModule> 00000000-0000-0000-0000-000000000000
+      enableVisionIntentDetection: true
+      visionLlmApiKey: ""
+      visionConfidenceThreshold: 0.700000
   ScriptTypes:
     -
       {}
@@ -51,3 +57,6 @@
     - '// @input SceneObject microphoneRecorderObject {"hint":"SceneObject with MicrophoneRecorder script (REQUIRED)"}'
     - '// @input SceneObject dynamicAudioOutputObject {"hint":"SceneObject with DynamicAudioOutput script for voice playback"}'
     - '// @input Asset.InternetModule internetModule {"hint":"Connect the InternetModule from your scene"}'
+    - "// @input bool enableVisionIntentDetection = true {\"hint\":\"Enable natural language camera activation (e.g., 'what do you think of this vase?')\"}"
+    - '// @input string visionLlmApiKey {"hint":"OpenAI API key for LLM-based intent detection (optional)"}'
+    - '// @input float visionConfidenceThreshold = 0.7 {"hint":"Confidence threshold for camera trigger (0.0-1.0)"}'

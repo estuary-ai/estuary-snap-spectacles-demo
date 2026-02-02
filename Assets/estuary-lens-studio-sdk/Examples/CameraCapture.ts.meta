@@ -26,9 +26,8 @@
   ExportUid: 00000000-0000-0000-0000-000000000000
   PackagePolicy: CanBeUnpacked
   ScriptInputsHidden:
-    captureResolution: false
+    cameraTexture: false
     debugMode: false
-    enableVisionAcknowledgment: false
   ScriptTypesHidden:
     {}
   ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
@@ -38,13 +37,11 @@
   Attachments:
     []
   DefaultScriptInputs:
-    - debugMode: true
-      captureResolution: !<float> 512.000000
-      enableVisionAcknowledgment: true
+    - cameraTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
+      debugMode: true
   ScriptTypes:
     -
       {}
   InputLines:
+    - '// @input Asset.Texture cameraTexture {"hint":"Device Camera Texture from your scene"}'
     - '// @input bool debugMode = true {"hint":"Enable debug logging"}'
-    - '// @input float captureResolution = 512 {"hint":"Camera capture resolution (smaller dimension in pixels)"}'
-    - '// @input bool enableVisionAcknowledgment = true {"hint":"Character says acknowledgment before analyzing image"}'

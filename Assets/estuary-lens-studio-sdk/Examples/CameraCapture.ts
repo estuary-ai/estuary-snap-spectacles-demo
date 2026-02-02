@@ -1,8 +1,11 @@
 /**
  * CameraCapture - Component for handling camera capture requests on Spectacles.
  * 
- * This component responds to the server's camera capture requests,
- * captures an image using the CameraModule API at a configurable resolution,
+ * This component responds to camera capture requests from:
+ * 1. Server-side detection (explicit commands like "what am I looking at")
+ * 2. VisionIntentDetector (natural language like "what do you think of this vase?")
+ * 
+ * The component captures an image using the CameraModule API at a configurable resolution,
  * and sends it back for AI vision analysis.
  * 
  * Setup in Lens Studio:
@@ -11,11 +14,17 @@
  * 3. Enable "Extended Permissions" in Project Settings for development
  *    (allows both camera access and WebSocket together)
  * 4. Optionally adjust "captureResolution" (default 512px) in the Inspector
+ * 5. (Recommended) Add VisionIntentDetectorComponent for natural language camera activation
  * 
  * Usage:
- * When connected, say something like "What am I looking at?" or "Turn on the camera"
- * The server will detect the vision intent and request a camera capture.
- * This component will automatically capture and send the image.
+ * - Explicit commands: "What am I looking at?" (server-side detection)
+ * - Natural language: "Hey what do you think of this vase I'm looking at?" (requires VisionIntentDetector)
+ * 
+ * Natural Language Camera Activation (NEW):
+ * To enable natural language camera activation, add the VisionIntentDetectorComponent:
+ * 1. Create another SceneObject and add VisionIntentDetectorComponent script
+ * 2. Set your LLM API key (OpenAI by default)
+ * 3. The VisionIntentDetector will analyze speech and trigger camera when appropriate
  * 
  * Vision Acknowledgment:
  * Enable "enableVisionAcknowledgment" to have the character say a quick phrase
@@ -199,7 +208,9 @@ export class CameraCapture extends BaseScriptComponent {
         this._isSubscribed = true;
         this.log('Subscribed to camera capture requests');
         this.log(`Vision acknowledgment: ${this.enableVisionAcknowledgment ? 'enabled' : 'disabled'}`);
-        this.log('Say "What am I looking at?" to trigger camera capture');
+        this.log('Camera capture can be triggered by:');
+        this.log('  1. Explicit commands: "What am I looking at?"');
+        this.log('  2. Natural language (with VisionIntentDetector): "What do you think of this vase?"');
     }
     
     /**

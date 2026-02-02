@@ -29,6 +29,7 @@ import { EstuaryMicrophone, MicrophoneRecorder } from '../src/Components/Estuary
 import { EstuaryCredentials, IEstuaryCredentials, getCredentialsFromSceneObject } from '../src/Components/EstuaryCredentials';
 import { EstuaryActionManager, EstuaryActions } from '../src/Components/EstuaryActionManager';
 import { EstuaryManager } from '../src/Components/EstuaryManager';
+import { VisionIntentDetector, VisionIntentDetectorComponent } from '../src/Components/VisionIntentDetector';
 import { EstuaryConfig } from '../src/Core/EstuaryConfig';
 import { setInternetModule } from '../src/Core/EstuaryClient';
 import { SessionInfo } from '../src/Models/SessionInfo';
@@ -95,6 +96,33 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     @hint("Connect the InternetModule from your scene")
     internetModule: InternetModule;
     
+    // ==================== Vision Intent Detection (Natural Language Camera) ====================
+    
+    /**
+     * Enable LLM-based vision intent detection for natural language camera activation.
+     * When enabled, phrases like "what do you think of this vase?" will trigger camera capture.
+     * Requires an LLM API key (OpenAI by default).
+     */
+    @input
+    @hint("Enable natural language camera activation (e.g., 'what do you think of this vase?')")
+    enableVisionIntentDetection: boolean = true;
+    
+    /**
+     * API key for the LLM used for vision intent detection.
+     * Leave empty to use heuristic-based detection (less accurate but no API needed).
+     */
+    @input
+    @hint("OpenAI API key for LLM-based intent detection (optional)")
+    visionLlmApiKey: string = "";
+    
+    /**
+     * Confidence threshold for triggering camera capture (0-1).
+     * Lower = more triggers, Higher = more selective.
+     */
+    @input
+    @hint("Confidence threshold for camera trigger (0.0-1.0)")
+    visionConfidenceThreshold: number = 0.7;
+    
     /** 
      * Default sample rate for audio playback.
      * 16000Hz is optimized for Snap Spectacles hardware.
@@ -108,6 +136,7 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     private character: EstuaryCharacter | null = null;
     private microphone: EstuaryMicrophone | null = null;
     private actionManager: EstuaryActionManager | null = null;
+    private visionIntentDetector: VisionIntentDetector | null = null;
     private dynamicAudioOutput: DynamicAudioOutput | null = null;
     private playerId: string = "";
     private updateEvent: SceneEvent | null = null;
@@ -226,6 +255,25 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         
         this.log("Action manager configured - EstuaryActions global events ready");
         
+        // Set up vision intent detector for natural language camera activation
+        if (this.enableVisionIntentDetection) {
+            this.visionIntentDetector = new VisionIntentDetector({
+                apiKey: this.visionLlmApiKey,
+                confidenceThreshold: this.visionConfidenceThreshold,
+                debugLogging: this.credentials!.debugMode
+            });
+            
+            // Connect to character to listen for transcripts
+            this.visionIntentDetector.startListening(this.character);
+            
+            if (this.visionLlmApiKey && this.visionLlmApiKey.length > 0) {
+                this.log("Vision intent detection enabled (LLM-based)");
+            } else {
+                this.log("Vision intent detection enabled (heuristic-based fallback)");
+            }
+            this.log("Natural language phrases like 'what do you think of this vase?' will now trigger camera");
+        }
+        
         // Set up DynamicAudioOutput for voice responses (Snap's recommended approach)
         if (this.dynamicAudioOutputObject) {
             // Find DynamicAudioOutput component on the SceneObject
@@ -333,6 +381,10 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         if (this.actionManager) {
             this.actionManager.dispose();
             this.actionManager = null;
+        }
+        if (this.visionIntentDetector) {
+            this.visionIntentDetector.dispose();
+            this.visionIntentDetector = null;
         }
         if (this.dynamicAudioOutput) {
             this.dynamicAudioOutput.interruptAudioOutput();
@@ -529,6 +581,11 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     /** Get the character instance */
     getCharacter(): EstuaryCharacter | null {
         return this.character;
+    }
+    
+    /** Get the vision intent detector for natural language camera activation */
+    getVisionIntentDetector(): VisionIntentDetector | null {
+        return this.visionIntentDetector;
     }
     
     // ==================== Utility ====================

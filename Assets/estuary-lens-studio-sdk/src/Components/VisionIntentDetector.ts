@@ -212,9 +212,17 @@ export class VisionIntentDetector extends EventEmitter<any> {
             if (result && result.requiresVision && result.confidence >= this._config.confidenceThreshold) {
                 this.log(`Vision intent DETECTED (confidence: ${result.confidence.toFixed(2)}): ${result.reason}`);
                 
+                // Generate request ID for correlation
+                const requestId = `vision-intent-${Date.now()}`;
+                
+                // IMMEDIATELY signal the server that an image is coming
+                // This allows the server to send a vision acknowledgment like "Let me take a look!"
+                // instead of generating a "I can't see" response
+                this.sendVisionPendingSignal(transcript, requestId);
+                
                 // Emit event for camera capture
                 const captureRequest: CameraCaptureRequest = {
-                    request_id: `vision-intent-${Date.now()}`,
+                    request_id: requestId,
                     text: transcript
                 };
                 
@@ -489,6 +497,22 @@ export class VisionIntentDetector extends EventEmitter<any> {
         };
     }
     
+    /**
+     * Send vision_pending signal to the server.
+     * This tells the server that an image is about to be sent,
+     * allowing it to generate a vision acknowledgment instead of
+     * responding with "I can't see what you're looking at".
+     */
+    private sendVisionPendingSignal(transcript: string, requestId: string): void {
+        const manager = EstuaryManager.instance;
+        if (manager) {
+            manager.sendVisionPending(transcript, requestId);
+            this.log(`Sent vision_pending signal to server for: ${requestId}`);
+        } else {
+            this.log('EstuaryManager not available - cannot send vision_pending signal');
+        }
+    }
+
     /**
      * Trigger camera capture through EstuaryManager.
      */

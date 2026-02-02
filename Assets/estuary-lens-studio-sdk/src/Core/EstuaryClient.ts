@@ -300,6 +300,28 @@ export class EstuaryClient extends EventEmitter<any> {
     }
 
     /**
+     * Signal to the server that a camera image is about to be sent.
+     * This allows the server to send a vision acknowledgment and wait for the image
+     * instead of generating a "I can't see" response.
+     * 
+     * @param text The transcript that triggered vision detection
+     * @param requestId Optional request ID for correlation
+     */
+    sendVisionPending(text: string, requestId?: string): void {
+        if (!this.isConnected) {
+            this.logError('Cannot send vision pending: not connected');
+            return;
+        }
+
+        const payload = {
+            text: text,
+            request_id: requestId || `vision-pending-${Date.now()}`
+        };
+        this.emitSocketEvent('vision_pending', payload);
+        this.log(`Sent vision_pending signal for: ${text.substring(0, 50)}...`);
+    }
+
+    /**
      * Start voice mode on the server (enables Deepgram STT).
      * Must be called before streaming audio for speech-to-text.
      */

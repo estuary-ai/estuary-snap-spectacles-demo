@@ -203,6 +203,21 @@ export class EstuaryManager extends EventEmitter<any> {
     }
 
     /**
+     * Signal to the server that a camera image is about to be sent.
+     * This allows the server to send a vision acknowledgment and wait for the image.
+     * @param text The transcript that triggered vision detection
+     * @param requestId Optional request ID for correlation
+     */
+    sendVisionPending(text: string, requestId?: string): void {
+        if (!this._client.isConnected) {
+            this.logError('Cannot send vision pending: not connected');
+            return;
+        }
+
+        this._client.sendVisionPending(text, requestId);
+    }
+
+    /**
      * Stream audio data to the server.
      * @param audioBase64 Base64-encoded audio
      */

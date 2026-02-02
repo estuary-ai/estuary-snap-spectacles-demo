@@ -266,7 +266,7 @@
 - !<SceneObject/354d79a7-4024-46f7-a448-782736528c27>
   PrefabRemaps:
     []
-  Name: EstuaryCredentials
+  Name: Estuary Credentials
   Enabled: true
   Layers: 1
   LocalTransform: !<TransformEntity>
@@ -316,7 +316,7 @@
 - !<SceneObject/41e79547-fd92-4794-9380-3d94aff4fbfe>
   PrefabRemaps:
     []
-  Name: ImageEndpointTest
+  Name: Estuary Camera Module
   Enabled: true
   Layers: 1
   LocalTransform: !<TransformEntity>
@@ -756,7 +756,7 @@
 - !<SceneObject/ab344148-bd6f-4c66-b3cd-5913efb971e2>
   PrefabRemaps:
     []
-  Name: Estuary Audio Manager
+  Name: Estuary Character
   Enabled: true
   Layers: 1
   LocalTransform: !<TransformEntity>
@@ -1003,7 +1003,7 @@
 - !<SceneObject/e2ade54d-1248-4d82-83f0-f4763cac33d7>
   PrefabRemaps:
     []
-  Name: Example Character
+  Name: Estuary Action Manager
   Enabled: true
   Layers: 1
   LocalTransform: !<TransformEntity>

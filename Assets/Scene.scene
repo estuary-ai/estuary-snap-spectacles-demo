@@ -624,7 +624,8 @@
   Enabled: true
   ScriptAsset: !<reference> e780724e-9de7-464c-a83b-7cdf30c6fbc0
   ScriptInputsDefault:
-    {}
+    enableVisionIntentDetection: true
+    visionConfidenceThreshold: true
   ScriptTypesDefault:
     {}
   ScriptInputs:
@@ -633,6 +634,8 @@
       microphoneRecorderObject: !<reference.SceneObject> c7d04291-fc00-4f58-bb6b-19aed41857c0
       dynamicAudioOutputObject: !<reference.SceneObject> 6dd1fcec-f498-43dc-9e18-7b0af1826c32
       internetModule: !<reference.InternetModule> 526d4deb-e562-4800-87e2-98140b398ecb
+      enableVisionIntentDetection: true
+      visionConfidenceThreshold: 0.700000
   ScriptTypes:
     "":
       {}

@@ -132,6 +132,12 @@ export class EstuaryClient extends EventEmitter<any> {
     private _disposed: boolean = false;
     private _namespace: string = SDK_NAMESPACE;
     private _auth: AuthenticateData | null = null;
+    private _connectStartMs: number | null = null;
+    private _wsOpenMs: number | null = null;
+    private _firstMessageMs: number | null = null;
+    private _engineIoOpenMs: number | null = null;
+    private _namespaceConnectedMs: number | null = null;
+    private _sessionInfoMs: number | null = null;
     
     // Send queue to prevent WebSocket message corruption
     // Lens Studio's WebSocket concatenates rapid sends into single packets!
@@ -427,8 +433,37 @@ export class EstuaryClient extends EventEmitter<any> {
 
     // ==================== Private Methods ====================
 
+    private resetConnectionTimings(): void {
+        const now = Date.now();
+        this._connectStartMs = now;
+        this._wsOpenMs = null;
+        this._firstMessageMs = null;
+        this._engineIoOpenMs = null;
+        this._namespaceConnectedMs = null;
+        this._sessionInfoMs = null;
+        this.log(`Timing connect_start: 0ms`);
+    }
+
+    private logTiming(label: string, timestampMs: number): void {
+        if (!this._config.debugLogging) {
+            return;
+        }
+        const parts: string[] = [];
+        if (this._connectStartMs !== null) {
+            parts.push(`since connect=${timestampMs - this._connectStartMs}ms`);
+        }
+        if (this._wsOpenMs !== null) {
+            parts.push(`since ws open=${timestampMs - this._wsOpenMs}ms`);
+        }
+        if (this._firstMessageMs !== null) {
+            parts.push(`since first msg=${timestampMs - this._firstMessageMs}ms`);
+        }
+        this.log(`Timing ${label}: ${parts.join(', ')}`);
+    }
+
     private connectInternal(): void {
         this.setState(ConnectionState.Connecting);
+        this.resetConnectionTimings();
 
         try {
             // Build WebSocket URL
@@ -557,6 +592,9 @@ export class EstuaryClient extends EventEmitter<any> {
     }
 
     private handleWebSocketOpen(): void {
+        const now = Date.now();
+        this._wsOpenMs = now;
+        this.logTiming('ws_open', now);
         this.log('WebSocket connected, waiting for Engine.IO handshake...');
         this._reconnectAttempts = 0;
     }
@@ -580,6 +618,11 @@ export class EstuaryClient extends EventEmitter<any> {
     }
 
     private handleWebSocketMessage(message: string): void {
+        if (this._firstMessageMs === null) {
+            const now = Date.now();
+            this._firstMessageMs = now;
+            this.logTiming('first_message', now);
+        }
         this.processSocketIOMessage(message);
     }
 
@@ -601,6 +644,11 @@ export class EstuaryClient extends EventEmitter<any> {
 
         if (message.startsWith('0')) {
             // Engine.IO open - now connect to namespace with auth
+            if (this._engineIoOpenMs === null) {
+                const now = Date.now();
+                this._engineIoOpenMs = now;
+                this.logTiming('engineio_open', now);
+            }
             this.log('Engine.IO connected, joining namespace...');
             const authJson = JSON.stringify(this._auth);
             this.log(`Sending auth payload: ${authJson}`);
@@ -614,6 +662,11 @@ export class EstuaryClient extends EventEmitter<any> {
         }
         else if (message.startsWith('40' + this._namespace) || message.startsWith('40,')) {
             // Socket.IO namespace connected
+            if (this._namespaceConnectedMs === null) {
+                const now = Date.now();
+                this._namespaceConnectedMs = now;
+                this.logTiming('namespace_connected', now);
+            }
             this.log('Namespace connected, waiting for session_info...');
             // The server should send session_info event after successful auth
         }
@@ -697,6 +750,11 @@ export class EstuaryClient extends EventEmitter<any> {
 
     private handleSessionInfo(data: any): void {
         try {
+            if (this._sessionInfoMs === null) {
+                const now = Date.now();
+                this._sessionInfoMs = now;
+                this.logTiming('session_info', now);
+            }
             const sessionInfo = parseSessionInfo(data);
             this._currentSession = sessionInfo;
             this.setState(ConnectionState.Connected);

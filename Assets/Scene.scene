@@ -879,8 +879,8 @@
     {}
   ScriptInputs:
     "":
-      apiKey: est_PX9ok-l96LEXvpt_9XqvrRkbG9K0cCp1fG7iTkBRR8w
-      characterId: 2f77f07d-d6ff-44d1-9078-d3892817e7fb
+      apiKey: "[YOUR ESTUARY API KEY]"
+      characterId: "[YOUR CHARACTER ID]"
       debugMode: true
       useSnapAccountId: true
       userIdField: ""

@@ -4,7 +4,7 @@
  * Scene wiring:
  * - Attach this script to the cloud SceneObject (or a parent).
  * - Assign the main camera SceneObject to followTarget.
- * - Ensure VoiceConnection.ts is in the scene (it sets EstuaryActions manager).
+ * - Ensure EstuaryVoiceConnection.ts is in the scene (it sets EstuaryActions manager).
  * - Use actions in the Estuary prompt:
  *   <action name="follow_user" /> and <action name="stop_following_user" />
  *

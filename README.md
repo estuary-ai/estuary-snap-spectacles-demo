@@ -228,7 +228,7 @@ If the AI keeps responding to itself or you hear echoing:
 
 ## Support
 
-- **Email** — spencer@estuary-ai.com
+- **Discord** — [discord.gg/E5EatETMmc](https://discord.gg/E5EatETMmc)
 - **Documentation** — [docs.estuary-ai.com](https://docs.estuary-ai.com)
 
 ## License

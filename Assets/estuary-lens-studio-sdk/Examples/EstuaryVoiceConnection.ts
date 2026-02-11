@@ -188,10 +188,8 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         this.updateEvent = this.createEvent("UpdateEvent");
         this.updateEvent.bind(() => this.onUpdate());
         
-        // Auto-connect after a brief delay
-        const delayedEvent = this.createEvent("DelayedCallbackEvent");
-        delayedEvent.bind(() => this.connect());
-        (delayedEvent as any).reset(0.5);
+        // Connect immediately — credentials and modules are already resolved
+        this.connect();
     }
     
     /**
@@ -263,83 +261,12 @@ export class SimpleAutoConnect extends BaseScriptComponent {
             this.log("Natural language phrases like 'what do you think of this vase?' will now trigger camera");
         }
         
-        // Set up DynamicAudioOutput for voice responses (Snap's recommended approach)
-        if (this.dynamicAudioOutputObject) {
-            // Find DynamicAudioOutput component on the SceneObject
-            const componentCount = this.dynamicAudioOutputObject.getComponentCount("Component.ScriptComponent");
-            for (let i = 0; i < componentCount; i++) {
-                const scriptComp = this.dynamicAudioOutputObject.getComponentByIndex("Component.ScriptComponent", i) as any;
-                if (scriptComp && typeof scriptComp.initialize === 'function' && typeof scriptComp.addAudioFrame === 'function') {
-                    this.dynamicAudioOutput = scriptComp as DynamicAudioOutput;
-                    break;
-                }
-            }
-            
-            if (this.dynamicAudioOutput) {
-                // Initialize with sample rate - this starts the AudioComponent
-                this.dynamicAudioOutput.initialize(this.audioSampleRate);
-                this.audioInitialized = true;
-                this.log(`DynamicAudioOutput configured (${this.audioSampleRate}Hz)`);
-            } else {
-                print("[SimpleAutoConnect] WARNING: Could not find DynamicAudioOutput script on object");
-            }
-        } else {
-            print("[SimpleAutoConnect] WARNING: No dynamicAudioOutputObject configured - voice responses won't be played");
-        }
-        
-        // Create microphone (VAD is handled by Deepgram backend)
+        // Create microphone (VAD is handled by Deepgram backend).
+        // NOTE: Hardware component discovery (MicrophoneRecorder, DynamicAudioOutput)
+        // is deferred to the 'connected' callback so that package scripts from
+        // RemoteServiceGateway.lspkg have time to initialize their APIs.
         this.microphone = new EstuaryMicrophone(this.character);
         this.microphone.debugLogging = this.credentials!.debugMode;
-        
-        // Set up microphone - prefer MicrophoneRecorder (event-based, recommended)
-        if (this.microphoneRecorderObject) {
-            this.log('Searching for MicrophoneRecorder...');
-            
-            const sceneObj = this.microphoneRecorderObject;
-            let micRecorder: MicrophoneRecorder | null = null;
-            
-            // Get all script components on the SceneObject
-            const componentCount = sceneObj.getComponentCount("Component.ScriptComponent");
-            this.log(`Found ${componentCount} ScriptComponent(s) on object`);
-            
-            for (let i = 0; i < componentCount; i++) {
-                const scriptComp = sceneObj.getComponentByIndex("Component.ScriptComponent", i) as any;
-                if (scriptComp) {
-                    // Check if this script has onAudioFrame (MicrophoneRecorder signature)
-                    if (scriptComp.onAudioFrame && typeof scriptComp.startRecording === 'function') {
-                        this.log('Found MicrophoneRecorder directly on script component');
-                        micRecorder = scriptComp as MicrophoneRecorder;
-                        break;
-                    }
-                    
-                    // Check .api property
-                    if (scriptComp.api && scriptComp.api.onAudioFrame) {
-                        this.log('Found MicrophoneRecorder via .api property');
-                        micRecorder = scriptComp.api as MicrophoneRecorder;
-                        break;
-                    }
-                    
-                    // Log available properties for debugging
-                    if (this.credentials?.debugMode) {
-                        const props: string[] = [];
-                        for (const key in scriptComp) {
-                            props.push(key);
-                        }
-                        this.log(`Script ${i} properties: ${props.slice(0, 10).join(', ')}${props.length > 10 ? '...' : ''}`);
-                    }
-                }
-            }
-            
-            if (micRecorder) {
-                this.microphone.setMicrophoneRecorder(micRecorder);
-                this.character.microphone = this.microphone;
-                this.log('MicrophoneRecorder configured successfully');
-            } else {
-                print("[SimpleAutoConnect] ERROR: Could not find MicrophoneRecorder API on any script component");
-            }
-        } else {
-            print("[SimpleAutoConnect] ERROR: No microphoneRecorderObject configured!");
-        }
         
         // Set up event handlers
         this.setupEventHandlers();
@@ -385,7 +312,7 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     private setupEventHandlers(): void {
         if (!this.character) return;
         
-        // Connected - start streaming mic immediately
+        // Connected - discover hardware components, then start voice + mic
         this.character.on('connected', (session: SessionInfo) => {
             this.log(`Connected! Session: ${session.sessionId}`);
             
@@ -393,6 +320,10 @@ export class SimpleAutoConnect extends BaseScriptComponent {
             this.recordActivity();
             this.lastTickTime = Date.now();
             this.disconnectedDueToInactivity = false;
+            
+            // Discover hardware components now — by the time the WebSocket
+            // handshake completes, all package scripts will have initialised.
+            this.discoverHardwareComponents();
             
             // Start voice session FIRST - this enables audio streaming
             this.character!.startVoiceSession();
@@ -461,6 +392,113 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         this.character.on('error', (error: string) => {
             print(`[Error] ${error}`);
         });
+    }
+    
+    // ==================== Hardware Component Discovery ====================
+    
+    /**
+     * Discover DynamicAudioOutput and MicrophoneRecorder on the referenced
+     * SceneObjects.  This is called from the 'connected' callback instead of
+     * from connect() so that package scripts from RemoteServiceGateway.lspkg
+     * have had time to run their onAwake() and expose their APIs.
+     */
+    private discoverHardwareComponents(): void {
+        // Skip if already discovered (e.g. on reconnect)
+        if (!this.dynamicAudioOutput) {
+            this.discoverDynamicAudioOutput();
+        }
+        if (this.microphone && !this.microphone.isRecording) {
+            this.discoverMicrophoneRecorder();
+        }
+    }
+    
+    /**
+     * Find the DynamicAudioOutput script on the configured SceneObject.
+     */
+    private discoverDynamicAudioOutput(): void {
+        if (!this.dynamicAudioOutputObject) {
+            print("[SimpleAutoConnect] WARNING: No dynamicAudioOutputObject configured - voice responses won't be played");
+            return;
+        }
+        
+        const scripts = this.dynamicAudioOutputObject.getComponents("Component.ScriptComponent") as any[];
+        for (let i = 0; i < scripts.length; i++) {
+            const sc = scripts[i] as any;
+            if (sc && typeof sc.initialize === 'function' && typeof sc.addAudioFrame === 'function') {
+                this.dynamicAudioOutput = sc as DynamicAudioOutput;
+                break;
+            }
+        }
+        
+        if (this.dynamicAudioOutput) {
+            this.dynamicAudioOutput.initialize(this.audioSampleRate);
+            this.audioInitialized = true;
+            this.log(`DynamicAudioOutput configured (${this.audioSampleRate}Hz)`);
+        } else {
+            print("[SimpleAutoConnect] WARNING: Could not find DynamicAudioOutput script on object");
+        }
+    }
+    
+    /**
+     * Find the MicrophoneRecorder script on the configured SceneObject.
+     */
+    private discoverMicrophoneRecorder(): void {
+        if (!this.microphoneRecorderObject) {
+            print("[SimpleAutoConnect] ERROR: No microphoneRecorderObject configured!");
+            return;
+        }
+        
+        this.log('Searching for MicrophoneRecorder...');
+        
+        const sceneObj = this.microphoneRecorderObject;
+        let micRecorder: MicrophoneRecorder | null = null;
+        
+        const scripts = sceneObj.getComponents("Component.ScriptComponent") as any[];
+        this.log(`Found ${scripts.length} ScriptComponent(s) on object`);
+        
+        for (let i = 0; i < scripts.length; i++) {
+            const scriptComp = scripts[i] as any;
+            if (!scriptComp) continue;
+            
+            // Check if this script has onAudioFrame (MicrophoneRecorder signature)
+            if (scriptComp.onAudioFrame && typeof scriptComp.startRecording === 'function') {
+                this.log('Found MicrophoneRecorder directly on script component');
+                micRecorder = scriptComp as MicrophoneRecorder;
+                break;
+            }
+            
+            // Check .api property (deprecated but may still work)
+            if (scriptComp.api && scriptComp.api.onAudioFrame) {
+                this.log('Found MicrophoneRecorder via .api property');
+                micRecorder = scriptComp.api as MicrophoneRecorder;
+                break;
+            }
+            
+            // Log ALL available properties on detection failure for debugging
+            if (this.credentials?.debugMode) {
+                const props: string[] = [];
+                for (const key in scriptComp) {
+                    props.push(key);
+                }
+                this.log(`Script ${i} properties (${props.length}): ${props.join(', ')}`);
+                // Also log .api sub-properties if present
+                if (scriptComp.api) {
+                    const apiProps: string[] = [];
+                    for (const key in scriptComp.api) {
+                        apiProps.push(key);
+                    }
+                    this.log(`Script ${i} .api properties (${apiProps.length}): ${apiProps.join(', ')}`);
+                }
+            }
+        }
+        
+        if (micRecorder) {
+            this.microphone!.setMicrophoneRecorder(micRecorder);
+            this.character!.microphone = this.microphone;
+            this.log('MicrophoneRecorder configured successfully');
+        } else {
+            print("[SimpleAutoConnect] ERROR: Could not find MicrophoneRecorder API on any script component");
+        }
     }
     
     private startMicStream(): void {

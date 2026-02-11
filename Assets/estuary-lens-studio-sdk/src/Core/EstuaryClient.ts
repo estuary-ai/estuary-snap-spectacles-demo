@@ -190,6 +190,15 @@ export class EstuaryClient extends EventEmitter<any> {
         this._config.debugLogging = value;
     }
 
+    /** Whether the client should auto-reconnect on disconnect */
+    get autoReconnect(): boolean {
+        return this._config.autoReconnect;
+    }
+
+    set autoReconnect(value: boolean) {
+        this._config.autoReconnect = value;
+    }
+
     // ==================== Public Methods ====================
 
     /**
@@ -489,6 +498,21 @@ export class EstuaryClient extends EventEmitter<any> {
     }
 
     private connectInternal(): void {
+        // Guard: close any stale WebSocket from a previous attempt before
+        // creating a new one.  Without this, a second call to connectInternal()
+        // (e.g. from a racing reconnect) would orphan the old socket.
+        if (this._webSocket) {
+            this.log('Closing stale WebSocket before reconnecting');
+            const oldWs = this._webSocket;
+            this._webSocket = null;
+            const noop = () => {};
+            oldWs.onopen = noop;
+            oldWs.onclose = noop;
+            oldWs.onerror = noop;
+            oldWs.onmessage = noop;
+            try { oldWs.close(); } catch (e) { /* ignore */ }
+        }
+
         this.setState(ConnectionState.Connecting);
         this.resetConnectionTimings();
 
@@ -1008,12 +1032,16 @@ export class EstuaryClient extends EventEmitter<any> {
             return;
         }
         
-        // STRICT gap enforcement - Lens Studio WebSocket needs time to flush
         const now = Date.now();
         const timeSinceLastSend = now - this._lastSendTime;
-        if (timeSinceLastSend < this._minSendGapMs) {
-            // Not enough time passed - wait for next frame
-            // Do NOT recurse, do NOT process more messages
+
+        // Only enforce the 100ms gap for audio messages (stream_audio).
+        // Protocol / control messages (namespace connect, authenticate,
+        // start_voice, pong, etc.) are small and infrequent — they must
+        // not be delayed or the handshake stalls for hundreds of ms.
+        const nextIsAudio = this._sendQueue[0].includes('stream_audio');
+        if (nextIsAudio && timeSinceLastSend < this._minSendGapMs) {
+            // Not enough time passed for audio — wait for next frame
             return;
         }
         
@@ -1021,8 +1049,7 @@ export class EstuaryClient extends EventEmitter<any> {
         const message = this._sendQueue.shift()!;
         
         // Only log non-audio messages or every 10th audio to reduce log spam
-        const isAudio = message.includes('stream_audio');
-        if (!isAudio) {
+        if (!nextIsAudio) {
             this.log('Sending (' + message.length + ' chars): ' + message.substring(0, 100) + (message.length > 100 ? '...' : ''));
         }
         

@@ -323,6 +323,11 @@ export class EstuaryManager extends EventEmitter<any> {
         if (this._initialized) return;
         this._initialized = true;
 
+        // Disable auto-reconnect at the client level — EstuaryCharacter
+        // already handles reconnection with smarter logic.  Having both
+        // layers reconnect independently causes racing WebSocket connections.
+        this._client.autoReconnect = false;
+
         // Subscribe to client events
         this._client.on('sessionConnected', (sessionInfo: SessionInfo) => this.handleSessionConnected(sessionInfo));
         this._client.on('disconnected', (reason: string) => this.handleDisconnected(reason));

@@ -451,9 +451,9 @@ export function getCredentialsFromSceneObject(sceneObject: SceneObject | null): 
         return null;
     }
     
-    const componentCount = sceneObject.getComponentCount("Component.ScriptComponent");
-    for (let i = 0; i < componentCount; i++) {
-        const scriptComp = sceneObject.getComponentByIndex("Component.ScriptComponent", i) as any;
+    const scripts = sceneObject.getComponents("Component.ScriptComponent") as any[];
+    for (let i = 0; i < scripts.length; i++) {
+        const scriptComp = scripts[i];
         if (scriptComp && 
             typeof scriptComp.apiKey === 'string' && 
             typeof scriptComp.characterId === 'string' &&

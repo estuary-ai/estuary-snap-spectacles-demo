@@ -44,7 +44,6 @@ let _internetModule: any = null;
  */
 export function setInternetModule(module: any): void {
     _internetModule = module;
-    print('[EstuaryClient] InternetModule set');
 }
 
 /**
@@ -888,13 +887,7 @@ export class EstuaryClient extends EventEmitter<any> {
         try {
             const requestId = data?.request_id || '';
             const text = data?.text;
-            print('');
-            print('📷 ========================================');
-            print('📷 CAMERA CAPTURE REQUEST FROM SERVER');
-            print(`📷 Request ID: ${requestId}`);
-            print(`📷 Context: ${text || '(none)'}`);
-            print('📷 ========================================');
-            print('');
+            this.log(`Camera capture request: ${requestId}${text ? `, context: ${text}` : ''}`);
             this.emit('cameraCaptureRequest', { request_id: requestId, text });
         } catch (e) {
             this.logError(`Failed to handle camera_capture_request: ${e}`);

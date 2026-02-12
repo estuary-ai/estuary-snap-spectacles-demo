@@ -30,8 +30,8 @@ const RECONNECT_DELAY_MS = 2000;
 /** Maximum number of reconnection attempts */
 const MAX_RECONNECT_ATTEMPTS = 5;
 
-/** Timeout for Engine.IO handshake before triggering reconnect (safety net). */
-const ENGINEIO_HANDSHAKE_TIMEOUT_MS = 30000;
+/** Timeout for Engine.IO handshake before triggering reconnect */
+const ENGINEIO_HANDSHAKE_TIMEOUT_MS = 10000;
 
 /** Global reference to InternetModule for WebSocket creation */
 let _internetModule: any = null;
@@ -44,6 +44,7 @@ let _internetModule: any = null;
  */
 export function setInternetModule(module: any): void {
     _internetModule = module;
+    print('[EstuaryClient] InternetModule set');
 }
 
 /**
@@ -190,7 +191,7 @@ export class EstuaryClient extends EventEmitter<any> {
         this._config.debugLogging = value;
     }
 
-    /** Whether the client should auto-reconnect on disconnect */
+    /** Whether to automatically reconnect when the connection is lost */
     get autoReconnect(): boolean {
         return this._config.autoReconnect;
     }
@@ -448,17 +449,8 @@ export class EstuaryClient extends EventEmitter<any> {
                 this._handshakeTimeoutStartMs = null;
                 this.logError(`Engine.IO handshake timed out after ${elapsed}ms - reconnecting`);
                 if (this._webSocket) {
-                    // Replace event handlers with no-ops BEFORE closing to prevent
-                    // the stale onclose from firing handleWebSocketClose() on the new connection.
-                    // Lens Studio requires function types (not null) for event callbacks.
-                    const oldWs = this._webSocket;
+                    try { this._webSocket.close(); } catch (e) { /* ignore */ }
                     this._webSocket = null;
-                    const noop = () => {};
-                    oldWs.onopen = noop;
-                    oldWs.onclose = noop;
-                    oldWs.onerror = noop;
-                    oldWs.onmessage = noop;
-                    try { oldWs.close(); } catch (e) { /* ignore */ }
                 }
                 this.handleReconnect();
                 return;
@@ -498,21 +490,6 @@ export class EstuaryClient extends EventEmitter<any> {
     }
 
     private connectInternal(): void {
-        // Guard: close any stale WebSocket from a previous attempt before
-        // creating a new one.  Without this, a second call to connectInternal()
-        // (e.g. from a racing reconnect) would orphan the old socket.
-        if (this._webSocket) {
-            this.log('Closing stale WebSocket before reconnecting');
-            const oldWs = this._webSocket;
-            this._webSocket = null;
-            const noop = () => {};
-            oldWs.onopen = noop;
-            oldWs.onclose = noop;
-            oldWs.onerror = noop;
-            oldWs.onmessage = noop;
-            try { oldWs.close(); } catch (e) { /* ignore */ }
-        }
-
         this.setState(ConnectionState.Connecting);
         this.resetConnectionTimings();
 
@@ -599,33 +576,9 @@ export class EstuaryClient extends EventEmitter<any> {
                 this.handleWebSocketError('WebSocket error');
             };
             ws.onmessage = (event: any) => {
-                try {
-                    // Extract message string from the event.
-                    // Lens Studio on Spectacles may deliver data as string, MessageEvent, or binary.
-                    let message: string;
-                    if (typeof event === 'string') {
-                        message = event;
-                    } else if (event?.data !== undefined) {
-                        if (typeof event.data === 'string') {
-                            message = event.data;
-                        } else {
-                            // Binary frame (ArrayBuffer/Uint8Array) — decode to string
-                            const bytes = new Uint8Array(event.data);
-                            const parts: string[] = [];
-                            for (let i = 0; i < bytes.length; i++) {
-                                parts.push(String.fromCharCode(bytes[i]));
-                            }
-                            message = parts.join('');
-                            this.log(`Decoded binary WS frame (${bytes.length} bytes)`);
-                        }
-                    } else {
-                        message = String(event);
-                    }
-                    this.handleWebSocketMessage(message);
-                } catch (e) {
-                    // MUST catch here — Lens Studio silently swallows errors in event callbacks
-                    print(`[EstuaryClient] ERROR in onmessage: ${e}`);
-                }
+                // Lens Studio WebSocketMessageEvent has 'data' property
+                const message = typeof event === 'string' ? event : (event?.data || '');
+                this.handleWebSocketMessage(message);
             };
             
             this.log('WebSocket event handlers assigned, connection should auto-open...');
@@ -720,17 +673,17 @@ export class EstuaryClient extends EventEmitter<any> {
         this.log(`Received: ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}`);
 
         if (message.startsWith('0')) {
-            // Engine.IO open - now connect to namespace WITHOUT auth (deferred)
+            // Engine.IO open - connect to namespace WITH auth (single round trip)
             this._handshakeTimeoutStartMs = null;
             if (this._engineIoOpenMs === null) {
                 const now = Date.now();
                 this._engineIoOpenMs = now;
                 this.logTiming('engineio_open', now);
             }
-            this.log('Engine.IO connected, joining namespace (deferred auth)...');
-            // Send namespace connect without auth — server accepts immediately,
-            // then we send auth as a separate event to avoid blocking the handshake.
-            const connectMsg = '40' + this._namespace;
+            this.log('Engine.IO connected, joining namespace with auth...');
+            // Send namespace connect with auth payload — server authenticates
+            // during connect, saving a full round trip vs deferred authenticate.
+            const connectMsg = '40' + this._namespace + ',' + JSON.stringify(this._auth);
             this.sendRaw(connectMsg);
         }
         else if (message.startsWith('2')) {
@@ -738,16 +691,13 @@ export class EstuaryClient extends EventEmitter<any> {
             this.sendRaw('3');
         }
         else if (message.startsWith('40' + this._namespace) || message.startsWith('40,')) {
-            // Socket.IO namespace connected
+            // Socket.IO namespace connected — auth was already sent during connect
             if (this._namespaceConnectedMs === null) {
                 const now = Date.now();
                 this._namespaceConnectedMs = now;
                 this.logTiming('namespace_connected', now);
             }
-            this.log('Namespace connected, sending deferred authenticate...');
-            // Send auth as a separate event — the server's on_sdk_authenticate handler
-            // processes this and sends session_info back.
-            this.emitSocketEvent('authenticate', this._auth);
+            this.log('Namespace connected (auth sent during connect)');
         }
         else if (message.startsWith('44')) {
             // Socket.IO connect error
@@ -911,7 +861,13 @@ export class EstuaryClient extends EventEmitter<any> {
         try {
             const requestId = data?.request_id || '';
             const text = data?.text;
-            this.log(`Camera capture request: ${requestId}${text ? `, context: ${text}` : ''}`);
+            print('');
+            print('📷 ========================================');
+            print('📷 CAMERA CAPTURE REQUEST FROM SERVER');
+            print(`📷 Request ID: ${requestId}`);
+            print(`📷 Context: ${text || '(none)'}`);
+            print('📷 ========================================');
+            print('');
             this.emit('cameraCaptureRequest', { request_id: requestId, text });
         } catch (e) {
             this.logError(`Failed to handle camera_capture_request: ${e}`);
@@ -1032,16 +988,12 @@ export class EstuaryClient extends EventEmitter<any> {
             return;
         }
         
+        // STRICT gap enforcement - Lens Studio WebSocket needs time to flush
         const now = Date.now();
         const timeSinceLastSend = now - this._lastSendTime;
-
-        // Only enforce the 100ms gap for audio messages (stream_audio).
-        // Protocol / control messages (namespace connect, authenticate,
-        // start_voice, pong, etc.) are small and infrequent — they must
-        // not be delayed or the handshake stalls for hundreds of ms.
-        const nextIsAudio = this._sendQueue[0].includes('stream_audio');
-        if (nextIsAudio && timeSinceLastSend < this._minSendGapMs) {
-            // Not enough time passed for audio — wait for next frame
+        if (timeSinceLastSend < this._minSendGapMs) {
+            // Not enough time passed - wait for next frame
+            // Do NOT recurse, do NOT process more messages
             return;
         }
         
@@ -1049,7 +1001,8 @@ export class EstuaryClient extends EventEmitter<any> {
         const message = this._sendQueue.shift()!;
         
         // Only log non-audio messages or every 10th audio to reduce log spam
-        if (!nextIsAudio) {
+        const isAudio = message.includes('stream_audio');
+        if (!isAudio) {
             this.log('Sending (' + message.length + ' chars): ' + message.substring(0, 100) + (message.length > 100 ? '...' : ''));
         }
         

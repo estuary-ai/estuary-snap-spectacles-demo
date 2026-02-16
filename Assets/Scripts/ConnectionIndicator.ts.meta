@@ -27,7 +27,6 @@
   PackagePolicy: CanBeUnpacked
   ScriptInputsHidden:
     debugLogging: false
-    handTracking: false
     indicatorMaterial: false
     indicatorObject: false
   ScriptTypesHidden:
@@ -39,15 +38,13 @@
   Attachments:
     []
   DefaultScriptInputs:
-    - handTracking: !<reference.ObjectTracking3D> 00000000-0000-0000-0000-000000000000
-      indicatorObject: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
+    - indicatorObject: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
       indicatorMaterial: !<reference.Material> 00000000-0000-0000-0000-000000000000
       debugLogging: false
   ScriptTypes:
     -
       {}
   InputLines:
-    - '// @input Component.ObjectTracking3D handTracking {"hint":"ObjectTracking3D component for hand tracking"}'
     - '// @input SceneObject indicatorObject {"hint":"The sphere SceneObject used as the indicator"}'
     - '// @input Asset.Material indicatorMaterial {"hint":"Material on the indicator sphere (will change baseColor)"}'
     - '// @input bool debugLogging {"hint":"Enable debug logging"}'

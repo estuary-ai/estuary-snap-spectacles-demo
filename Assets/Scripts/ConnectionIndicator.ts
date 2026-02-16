@@ -8,27 +8,24 @@
  * - Dark red: Error state
  *
  * Setup in Lens Studio:
- * 1. Create an ObjectTracking3D SceneObject with a Hand Tracking 3D asset
+ * 1. Ensure the SpectaclesInteractionKit prefab is in the scene
  * 2. Add a Sphere mesh to the scene (scale it small, e.g. 0.5)
  * 3. Create an Unlit material and assign it to the sphere
  * 4. Attach this script to any SceneObject
  * 5. Wire up the inputs in the Inspector:
- *    - handTracking → the ObjectTracking3D component
  *    - indicatorObject → the sphere SceneObject
  *    - indicatorMaterial → the unlit material on the sphere
  */
 
 import { EstuaryManager } from "../estuary-lens-studio-sdk/src/Components/EstuaryManager";
 import { ConnectionState } from "../estuary-lens-studio-sdk/src/Core/EstuaryEvents";
+import { HandInputData } from "SpectaclesInteractionKit.lspkg/Providers/HandInputData/HandInputData";
+import { BaseHand } from "SpectaclesInteractionKit.lspkg/Providers/HandInputData/BaseHand";
 
 @component
 export class ConnectionIndicator extends BaseScriptComponent {
 
     // ==================== Configuration (set in Inspector) ====================
-
-    @input
-    @hint("ObjectTracking3D component for hand tracking")
-    handTracking: ObjectTracking3D;
 
     @input
     @hint("The sphere SceneObject used as the indicator")
@@ -60,7 +57,7 @@ export class ConnectionIndicator extends BaseScriptComponent {
 
     private _material: Material | null = null;
     private _lastState: ConnectionState = ConnectionState.Disconnected;
-    private _attached: boolean = false;
+    private _hand: BaseHand;
 
     // ==================== Lifecycle ====================
 
@@ -75,37 +72,38 @@ export class ConnectionIndicator extends BaseScriptComponent {
         // Set initial color to red (disconnected)
         this.setColor(this.COLOR_DISCONNECTED);
 
-        // Attach the indicator sphere to the palm via script
-        this.attachToPalm();
+        // Hide indicator until hand is found
+        if (this.indicatorObject) {
+            this.indicatorObject.enabled = false;
+        }
+
+        // Set up hand tracking via SIK
+        this._hand = HandInputData.getInstance().getHand("right");
+
+        this._hand.onHandFound.add(() => {
+            this.log("Hand found — attaching indicator");
+            const attachPoint = this._hand.pinkyTip.getAttachmentPoint();
+            this.indicatorObject.setParent(attachPoint);
+            this.indicatorObject.enabled = true;
+        });
+
+        this._hand.onHandLost.add(() => {
+            this.log("Hand lost — hiding indicator");
+            this.indicatorObject.enabled = false;
+        });
+
+        // If hand is already tracked, attach immediately
+        if (this._hand.isTracked()) {
+            const attachPoint = this._hand.pinkyTip.getAttachmentPoint();
+            this.indicatorObject.setParent(attachPoint);
+            this.indicatorObject.enabled = true;
+        }
 
         // Poll connection state every frame
         const updateEvent = this.createEvent("UpdateEvent");
         updateEvent.bind(() => this.onUpdate());
 
         this.log("Initialized — waiting for connection...");
-    }
-
-    // ==================== Hand Attachment ====================
-
-    /**
-     * Programmatically attach the indicator sphere to the hand_center
-     * (palm center) joint on the tracked hand.
-     */
-    private attachToPalm(): void {
-        if (!this.handTracking) {
-            this.log("No handTracking input — sphere will stay where it is in the scene");
-            return;
-        }
-
-        if (!this.indicatorObject) {
-            this.log("No indicatorObject — nothing to attach");
-            return;
-        }
-
-        // Attach the sphere to the hand_center joint (palm center)
-        this.handTracking.addAttachmentPoint("hand_center", this.indicatorObject);
-        this._attached = true;
-        this.log("Attached indicator to hand_center (palm)");
     }
 
     // ==================== Material Resolution ====================

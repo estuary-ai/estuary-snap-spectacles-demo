@@ -665,8 +665,7 @@
   Enabled: true
   ScriptAsset: !<reference> 234be11f-4c48-40f6-b10c-ccd2f554af03
   ScriptInputsDefault:
-    enableVisionIntentDetection: true
-    visionConfidenceThreshold: true
+    {}
   ScriptTypesDefault:
     {}
   ScriptInputs:
@@ -675,8 +674,6 @@
       microphoneRecorderObject: !<reference.SceneObject> c7d04291-fc00-4f58-bb6b-19aed41857c0
       dynamicAudioOutputObject: !<reference.SceneObject> 6dd1fcec-f498-43dc-9e18-7b0af1826c32
       internetModule: !<reference.InternetModule> 526d4deb-e562-4800-87e2-98140b398ecb
-      enableVisionIntentDetection: true
-      visionConfidenceThreshold: 0.700000
   ScriptTypes:
     "":
       {}
@@ -764,14 +761,12 @@
   ScriptInputsDefault:
     debugMode: true
     captureResolution: true
-    enableVisionAcknowledgment: true
   ScriptTypesDefault:
     {}
   ScriptInputs:
     "":
       debugMode: true
       captureResolution: !<float> 512.000000
-      enableVisionAcknowledgment: true
   ScriptTypes:
     "":
       {}
@@ -872,18 +867,20 @@
   Enabled: true
   ScriptAsset: !<reference> 733f6a95-3e4d-4328-8094-851235be6b03
   ScriptInputsDefault:
-    debugMode: true
+    serverUrl: true
     useSnapAccountId: true
     userIdField: true
+    debugMode: true
   ScriptTypesDefault:
     {}
   ScriptInputs:
     "":
-      apiKey: "[YOUR ESTUARY API KEY]"
-      characterId: "[YOUR CHARACTER ID]"
-      debugMode: true
+      apiKey: est_p_XXc0U7KhNNJJETpDc_QvdENDDEtnu7I188vWV24YI
+      characterId: 80a452fa-621b-4a40-bc32-df3618fa1e49
+      serverUrl: "ws://localhost:4001"
       useSnapAccountId: true
       userIdField: ""
+      debugMode: true
   ScriptTypes:
     "":
       {}

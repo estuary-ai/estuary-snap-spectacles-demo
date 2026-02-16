@@ -19,9 +19,15 @@
  *    - Connect the SceneObject to dynamicAudioOutputObject input
  * 6. Set the serverUrl and characterId in the Inspector
  * 7. Make sure your character has a Voice Preset configured in the dashboard!
+ * 8. Add the CameraCapture component to enable vision (responds to server-initiated requests)
  * 
  * IMPORTANT: Your character must have a voice configured in the Estuary dashboard,
  * otherwise responses will be text-only (no TTS audio).
+ * 
+ * Vision: When the user says something visual (e.g. "what do you think of this vase?"),
+ * the backend's agentic tool router detects the intent and sends a camera_capture request
+ * to the SDK. The CameraCapture component handles capturing and sending the image back.
+ * No client-side vision intent detection is needed.
  */
 
 import { EstuaryCharacter } from '../src/Components/EstuaryCharacter';
@@ -29,7 +35,6 @@ import { EstuaryMicrophone, MicrophoneRecorder } from '../src/Components/Estuary
 import { EstuaryCredentials, IEstuaryCredentials, getCredentialsFromSceneObject } from '../src/Components/EstuaryCredentials';
 import { EstuaryActionManager, EstuaryActions } from '../src/Components/EstuaryActionManager';
 import { EstuaryManager } from '../src/Components/EstuaryManager';
-import { VisionIntentDetector } from '../src/Components/VisionIntentDetector';
 import { EstuaryConfig } from '../src/Core/EstuaryConfig';
 import { setInternetModule } from '../src/Core/EstuaryClient';
 import { SessionInfo } from '../src/Models/SessionInfo';
@@ -96,26 +101,6 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     @hint("Connect the InternetModule from your scene")
     internetModule: InternetModule;
     
-    // ==================== Vision Intent Detection (Natural Language Camera) ====================
-    
-    /**
-     * Enable vision intent detection for natural language camera activation.
-     * When enabled, phrases like "what do you think of this vase?" will trigger camera capture.
-     * Uses smart heuristic detection - no additional API key needed!
-     */
-    @input
-    @hint("Enable natural language camera activation (e.g., 'what do you think of this vase?')")
-    enableVisionIntentDetection: boolean = true;
-    
-    /**
-     * Confidence threshold for triggering camera capture (0-1).
-     * Lower = more triggers, Higher = more selective.
-     * Default 0.7 balances sensitivity with avoiding false triggers.
-     */
-    @input
-    @hint("Confidence threshold for camera trigger (0.0-1.0)")
-    visionConfidenceThreshold: number = 0.7;
-    
     /** 
      * Default sample rate for audio playback.
      * 16000Hz is optimized for Snap Spectacles hardware.
@@ -129,7 +114,6 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     private character: EstuaryCharacter | null = null;
     private microphone: EstuaryMicrophone | null = null;
     private actionManager: EstuaryActionManager | null = null;
-    private visionIntentDetector: VisionIntentDetector | null = null;
     private dynamicAudioOutput: DynamicAudioOutput | null = null;
     private playerId: string = "";
     private updateEvent: SceneEvent | null = null;
@@ -246,21 +230,6 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         
         this.log("Action manager configured - EstuaryActions global events ready");
         
-        // Set up vision intent detector for natural language camera activation
-        if (this.enableVisionIntentDetection) {
-            this.visionIntentDetector = new VisionIntentDetector({
-                apiKey: '', // Uses heuristic detection - no external API needed
-                confidenceThreshold: this.visionConfidenceThreshold,
-                debugLogging: this.credentials!.debugMode
-            });
-            
-            // Connect to character to listen for transcripts
-            this.visionIntentDetector.startListening(this.character);
-            
-            this.log("Vision intent detection enabled");
-            this.log("Natural language phrases like 'what do you think of this vase?' will now trigger camera");
-        }
-        
         // Create microphone (VAD is handled by Deepgram backend).
         // NOTE: Hardware component discovery (MicrophoneRecorder, DynamicAudioOutput)
         // is deferred to the 'connected' callback so that package scripts from
@@ -292,10 +261,6 @@ export class SimpleAutoConnect extends BaseScriptComponent {
         if (this.actionManager) {
             this.actionManager.dispose();
             this.actionManager = null;
-        }
-        if (this.visionIntentDetector) {
-            this.visionIntentDetector.dispose();
-            this.visionIntentDetector = null;
         }
         if (this.dynamicAudioOutput) {
             this.dynamicAudioOutput.interruptAudioOutput();
@@ -589,11 +554,6 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     /** Get the character instance */
     getCharacter(): EstuaryCharacter | null {
         return this.character;
-    }
-    
-    /** Get the vision intent detector for natural language camera activation */
-    getVisionIntentDetector(): VisionIntentDetector | null {
-        return this.visionIntentDetector;
     }
     
     // ==================== Utility ====================

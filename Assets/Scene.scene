@@ -9,6 +9,8 @@
     - !<own> 41e79547-fd92-4794-9380-3d94aff4fbfe
     - !<own> 86fe342a-faa5-451c-96b6-e581790e8d8f
     - !<own> e37fa2d9-9f09-46b6-992d-5ed12f24dffb
+    - !<own> 621442ac-6c0f-4f9d-bed4-a1bbb61f4dd1
+    - !<own> 6f93ef89-a2e7-42e9-87e9-c8fe757a6418
   layers: !<Layers/267ee9a7-aff2-4f9d-9a49-f71214747d03>
     userLayers:
       []
@@ -246,6 +248,69 @@
   BlendNormals: false
   BlendShapes:
     {}
+- !<ObjectTracking3D/1dc2bcda-2f73-4799-967f-6b7cb092922c>
+  PrefabRemaps:
+    []
+  Name: Object Tracking 3D
+  Enabled: true
+  ObjectIndex: 0
+  TrackingMode: ProportionsAndPose
+  TrackPosition: true
+  TrackingAsset: !<reference> d7a1b7a3-3911-42de-8c3a-39a7c1fc71f7
+  AttachmentLabels:
+    - wrist
+    - wrist_to_thumb
+    - thumb-0
+    - thumb-1
+    - thumb-2
+    - thumb-3
+    - wrist_to_index
+    - index-0
+    - index-1
+    - index-2
+    - index-3
+    - wrist_to_mid
+    - mid-0
+    - mid-1
+    - mid-2
+    - mid-3
+    - wrist_to_ring
+    - ring-0
+    - ring-1
+    - ring-2
+    - ring-3
+    - wrist_to_pinky
+    - pinky-0
+    - pinky-1
+    - pinky-2
+    - pinky-3
+  AttachedObjects:
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
+    - !<reference> 00000000-0000-0000-0000-000000000000
 - !<Animation/22cdb65e-7a62-40be-8c7f-7ff0b0bd5b6e>
   PrefabRemaps:
     []
@@ -487,6 +552,21 @@
     joint8_2: !<reference> e58f40d9-7286-4c14-9013-570f038f9b1d
     joint8_3: !<reference> 9b8e4f0f-b2bc-468c-b6a5-783059489a29
     joint9: !<reference> b3da0b3c-1046-474d-b28a-4e86a2d5bd27
+- !<SceneObject/621442ac-6c0f-4f9d-bed4-a1bbb61f4dd1>
+  PrefabRemaps:
+    []
+  Name: Hand Tracking
+  Enabled: true
+  Layers: 1
+  LocalTransform: !<TransformEntity>
+    Position: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Rotation: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Scale: {x: 1.000000, y: 1.000000, z: 1.000000}
+    HasSegmentScaleCompensation: false
+  Children:
+    []
+  Components:
+    - !<own> 1dc2bcda-2f73-4799-967f-6b7cb092922c
 - !<Animation/62915046-c317-48e6-8e75-3c42e3703b94>
   PrefabRemaps:
     []
@@ -521,6 +601,22 @@
   Components:
     - !<own> e6b8e99d-2157-42e5-843e-69b555fc076f
     - !<own> 75aab4cc-a5c7-4043-9565-3405bd504136
+- !<SceneObject/6f93ef89-a2e7-42e9-87e9-c8fe757a6418>
+  PrefabRemaps:
+    []
+  Name: Connection Indicator
+  Enabled: true
+  Layers: 1
+  LocalTransform: !<TransformEntity>
+    Position: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Rotation: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Scale: {x: 1.000000, y: 1.000000, z: 1.000000}
+    HasSegmentScaleCompensation: false
+  Children:
+    []
+  Components:
+    - !<own> d779d78d-2daa-4ee4-b3d1-d29c55aed5c5
+    - !<own> 7836d575-d0bc-4c84-97ae-e4a41f19149e
 - !<ScriptComponent/73cae4d0-8525-406f-a25c-73dfc9bd855c>
   PrefabRemaps:
     []
@@ -573,6 +669,25 @@
   BlendNormals: false
   BlendShapes:
     {}
+- !<ScriptComponent/7836d575-d0bc-4c84-97ae-e4a41f19149e>
+  PrefabRemaps:
+    []
+  Name: ConnectionIndicator
+  Enabled: true
+  ScriptAsset: !<reference> 9f9e4fc8-03ee-453e-9a9b-f517985b7c02
+  ScriptInputsDefault:
+    {}
+  ScriptTypesDefault:
+    {}
+  ScriptInputs:
+    "":
+      handTracking: !<reference.ObjectTracking3D> 1dc2bcda-2f73-4799-967f-6b7cb092922c
+      indicatorObject: !<reference.SceneObject> 6f93ef89-a2e7-42e9-87e9-c8fe757a6418
+      indicatorMaterial: !<reference.Material> 07121ee3-c183-4a61-9860-03425c42c475
+      debugLogging: true
+  ScriptTypes:
+    "":
+      {}
 - !<SceneObject/80f6b7b1-d4ba-4cbe-951b-838bdbf4b410>
   PrefabRemaps:
     []
@@ -872,18 +987,20 @@
   Enabled: true
   ScriptAsset: !<reference> 733f6a95-3e4d-4328-8094-851235be6b03
   ScriptInputsDefault:
-    debugMode: true
     useSnapAccountId: true
     userIdField: true
+    debugMode: true
   ScriptTypesDefault:
     {}
   ScriptInputs:
     "":
-      apiKey: "[YOUR ESTUARY API KEY]"
+      apiKey: |
+        [YOUR ESTUARY API KEY]
+
       characterId: "[YOUR CHARACTER ID]"
-      debugMode: true
       useSnapAccountId: true
       userIdField: ""
+      debugMode: true
   ScriptTypes:
     "":
       {}
@@ -944,6 +1061,26 @@
     []
   Components:
     - !<own> 2a4651bc-74bb-4990-8f36-bb7a51323ee1
+- !<RenderMeshVisual/d779d78d-2daa-4ee4-b3d1-d29c55aed5c5>
+  PrefabRemaps:
+    []
+  Name: Render Mesh Visual
+  Enabled: true
+  RenderOrder: 0
+  StretchMode: Stretch
+  VerticalAlignment: Center
+  HorizontalAlignment: Center
+  MeshShadowMode: None
+  ShadowColor: {x: 1.000000, y: 1.000000, z: 1.000000, w: 1.000000}
+  ShadowDensity: 1.000000
+  Materials:
+    - !<reference> 07121ee3-c183-4a61-9860-03425c42c475
+  Mesh: !<reference> 78f8d565-df35-420b-b03d-34728c542619
+  Skin: !<reference> 00000000-0000-0000-0000-000000000000
+  BlendShapesEnabled: true
+  BlendNormals: false
+  BlendShapes:
+    {}
 - !<SceneObject/e2ade54d-1248-4d82-83f0-f4763cac33d7>
   PrefabRemaps:
     []

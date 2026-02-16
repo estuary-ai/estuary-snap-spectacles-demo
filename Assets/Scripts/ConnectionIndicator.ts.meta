@@ -1,0 +1,53 @@
+- !<AssetImportMetadata/e002d2f2-9c20-41ef-91f6-a8e4189ff8a6>
+  ImportedAssetIds:
+    TypeScriptAsset: !<reference> 9f9e4fc8-03ee-453e-9a9b-f517985b7c02
+  ImporterName: TypeScriptAssetImporter
+  PrimaryAsset: !<reference> 9f9e4fc8-03ee-453e-9a9b-f517985b7c02
+  PackageType: NotAPackage
+  LegacyPackagePolicy: ~
+  ExtraData:
+    {}
+  AssetDataMap:
+    TypeScriptAsset: !<own> 2fee5796-a757-46a3-9226-32547cb33644
+  DependentFiles:
+    []
+  ImporterSettings: !<AssetImporterSettings>
+    {}
+  CompressionSettings: !<own> 00000000-0000-0000-0000-000000000000
+- !<TypeScriptAssetData/2fee5796-a757-46a3-9226-32547cb33644>
+  SvgIcon: ""
+  SetupScript:
+    code: ""
+  Description: ""
+  VersionMajor: 0
+  VersionMinor: 0
+  VersionPatch: 0
+  ComponentUid: 3a9e5e97-452b-4e4d-8f49-101b54616b74
+  ExportUid: 00000000-0000-0000-0000-000000000000
+  PackagePolicy: CanBeUnpacked
+  ScriptInputsHidden:
+    debugLogging: false
+    handTracking: false
+    indicatorMaterial: false
+    indicatorObject: false
+  ScriptTypesHidden:
+    {}
+  ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
+  DeclarationFile: !<reference> 00000000-0000-0000-0000-000000000000
+  Tags:
+    []
+  Attachments:
+    []
+  DefaultScriptInputs:
+    - handTracking: !<reference.ObjectTracking3D> 00000000-0000-0000-0000-000000000000
+      indicatorObject: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
+      indicatorMaterial: !<reference.Material> 00000000-0000-0000-0000-000000000000
+      debugLogging: false
+  ScriptTypes:
+    -
+      {}
+  InputLines:
+    - '// @input Component.ObjectTracking3D handTracking {"hint":"ObjectTracking3D component for hand tracking"}'
+    - '// @input SceneObject indicatorObject {"hint":"The sphere SceneObject used as the indicator"}'
+    - '// @input Asset.Material indicatorMaterial {"hint":"Material on the indicator sphere (will change baseColor)"}'
+    - '// @input bool debugLogging {"hint":"Enable debug logging"}'

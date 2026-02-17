@@ -16,8 +16,8 @@
  * 5. Assign unmutedIconObject and mutedIconObject child SceneObjects (optional — button works without icons)
  *
  * Toggle mapping:
- *   Button OFF (default) = mic LIVE  (unmuted)
- *   Button ON  (toggled) = mic MUTED
+ *   Button OFF (default) = ALWAYS-ON mode (mic live, streaming continuously)
+ *   Button ON  (toggled) = PUSH-TO-TALK mode (mic muted; pinch right hand to stream)
  */
 
 import { HandInputData } from "SpectaclesInteractionKit.lspkg/Providers/HandInputData/HandInputData";
@@ -58,6 +58,10 @@ export class MuteButton extends BaseScriptComponent {
     palmOffset: vec3 = new vec3(0, 3, 0);
 
     @input
+    @hint("(Optional) SceneObject for index-finger PTT effect (e.g. small sphere with glow material)")
+    pttEffectObject: SceneObject;
+
+    @input
     @hint("Enable debug logging")
     debugLogging: boolean = false;
 
@@ -67,6 +71,9 @@ export class MuteButton extends BaseScriptComponent {
     private _muteController: MuteController | null = null;
     private _toggleButton: ToggleButton | null = null;
     private _connected: boolean = false;
+    private _pttMode: boolean = false;
+    private _pttActive: boolean = false;
+    private _pttMuteAt: number = 0;  // getTime() deadline for delayed mute; 0 = no pending mute
 
     // ==================== Lifecycle ====================
 
@@ -79,20 +86,46 @@ export class MuteButton extends BaseScriptComponent {
 
         // Hide until hand is found
         sceneObj.enabled = false;
+        if (this.pttEffectObject) this.pttEffectObject.enabled = false;
 
         this._hand.onHandFound.add(() => {
             print("[MuteButton] Hand found — attaching mute button");
             this.attachToHand(sceneObj);
+            if (this.pttEffectObject) {
+                this.pttEffectObject.setParent(this._hand.indexTip.getAttachmentPoint());
+                this.pttEffectObject.enabled = false;
+            }
         });
 
         this._hand.onHandLost.add(() => {
             this.log("Hand lost — hiding mute button");
+            this._pttMuteAt = 0;  // cancel any pending delay
+            if (this._pttActive) {
+                this._pttActive = false;
+                if (this._muteController) {
+                    this._muteController.setMuted(true);
+                    this.log("Hand lost during PTT stream — fail-safe muted");
+                }
+                this.updateIcons(true);
+            }
+            if (this.pttEffectObject) {
+                this.pttEffectObject.enabled = false;
+            }
             sceneObj.enabled = false;
         });
+
+        // Global pinch events for push-to-talk
+        this._hand.onPinchDown.add(() => this.onPttPinchDown());
+        this._hand.onPinchUp.add(() => this.onPttPinchUp());
+        this._hand.onPinchCancel.add(() => this.onPttPinchCancel());
 
         // If hand is already tracked, attach immediately
         if (this._hand.isTracked()) {
             this.attachToHand(sceneObj);
+            if (this.pttEffectObject) {
+                this.pttEffectObject.setParent(this._hand.indexTip.getAttachmentPoint());
+                this.pttEffectObject.enabled = false;
+            }
         }
 
         // Poll for RoundButton and MuteController in update loop
@@ -121,6 +154,16 @@ export class MuteButton extends BaseScriptComponent {
     // ==================== Update Loop ====================
 
     private onUpdate(): void {
+        // Check for pending PTT mute delay
+        if (this._pttMuteAt > 0 && getTime() >= this._pttMuteAt) {
+            this._pttMuteAt = 0;
+            this._pttActive = false;
+            if (this._muteController) this._muteController.setMuted(true);
+            this.updateIcons(true);
+            if (this.pttEffectObject) this.pttEffectObject.enabled = false;
+            this.log("PTT delay expired → muted");
+        }
+
         if (this._connected) return;
 
         // Discover RoundButton on same SceneObject (lazy — waits for UIKit init)
@@ -182,15 +225,53 @@ export class MuteButton extends BaseScriptComponent {
         this.updateIcons(btn.isOn);
 
         btn.onValueChange.add((value: number) => {
-            const muted = value === 1; // toggled ON = muted
-            ctrl.setMuted(muted);
-            this.updateIcons(muted);
-            this.log(`Toggle → ${muted ? 'MUTED' : 'UNMUTED'}`);
+            const enteringPtt = value === 1; // toggle ON = PTT mode
+            this._pttMode = enteringPtt;
+            this._pttActive = false;
+            this._pttMuteAt = 0;
+
+            if (enteringPtt) {
+                ctrl.setMuted(true);
+                this.updateIcons(true);
+                print("[MuteButton] Mode → PUSH-TO-TALK (pinch to stream)");
+            } else {
+                ctrl.setMuted(false);
+                this.updateIcons(false);
+                print("[MuteButton] Mode → ALWAYS-ON MIC");
+            }
         });
 
-        // Sync initial state (button defaults to OFF = unmuted, which matches mic live)
+        // Sync initial state (button defaults to OFF = always-on, which matches mic live)
+        this._pttMode = btn.isOn;
         ctrl.setMuted(btn.isOn);
-        print("[MuteButton] Wired: RoundButton ↔ mic mute (initial muted=" + btn.isOn + ")");
+        print("[MuteButton] Wired: RoundButton ↔ mic mute (initial pttMode=" + btn.isOn + ")");
+    }
+
+    // ==================== Push-to-Talk Handlers ====================
+
+    private onPttPinchDown(): void {
+        if (!this._pttMode || !this._muteController) return;
+        if (this._pttMuteAt > 0) {
+            this._pttMuteAt = 0;
+            this.log("PTT re-pinch — cancelled pending mute");
+        }
+        this._pttActive = true;
+        this._muteController.setMuted(false);
+        this.updateIcons(false);
+        if (this.pttEffectObject) this.pttEffectObject.enabled = true;
+        this.log("PTT pinch → streaming");
+    }
+
+    private onPttPinchUp(): void {
+        if (!this._pttMode || !this._pttActive) return;
+        this._pttMuteAt = getTime() + 1.0;
+        this.log("PTT release → muting in 1000ms");
+    }
+
+    private onPttPinchCancel(): void {
+        if (!this._pttMode || !this._pttActive) return;
+        this._pttMuteAt = getTime() + 1.0;
+        this.log("PTT cancel → muting in 1000ms");
     }
 
     // ==================== Icon Visibility ====================

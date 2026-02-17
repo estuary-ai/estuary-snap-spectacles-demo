@@ -29,6 +29,7 @@
     debugLogging: false
     mutedIconObject: false
     palmOffset: false
+    pttEffectObject: false
     unmutedIconObject: false
     voiceConnection: false
   ScriptTypesHidden:
@@ -44,6 +45,7 @@
       unmutedIconObject: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
       mutedIconObject: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
       palmOffset: !<Vec3> {x: 0.000000, y: 3.000000, z: 0.000000}
+      pttEffectObject: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
       debugLogging: false
   ScriptTypes:
     -
@@ -53,4 +55,5 @@
     - '// @input SceneObject unmutedIconObject {"hint":"Child SceneObject showing unmuted mic icon (visible when LIVE)"}'
     - '// @input SceneObject mutedIconObject {"hint":"Child SceneObject showing muted mic icon (visible when MUTED)"}'
     - '// @input vec3 palmOffset = {0,3,0} {"hint":"Offset from hand attachment point (cm). Positive Y = above palm."}'
+    - '// @input SceneObject pttEffectObject {"hint":"(Optional) SceneObject for index-finger PTT effect (e.g. small sphere with glow material)"}'
     - '// @input bool debugLogging {"hint":"Enable debug logging"}'

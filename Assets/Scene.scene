@@ -1968,6 +1968,7 @@
   Children:
     - !<own> 90a28ce3-19d6-41e5-86ee-04fce0b03efb
     - !<own> c9cc4881-4642-4d16-a6b0-0b85515f8064
+    - !<own> c19e082c-bcd1-4ebe-bcca-f1858a510752
   Components:
     - !<own> 7f0348f0-5965-4c7a-adc4-e6188d4f72f2
     - !<own> a5ca858e-0e5e-442a-b491-4d8a4220138b
@@ -2393,6 +2394,26 @@
     []
   Components:
     - !<own> 4862c68f-2ce3-4d86-85cc-273720c6eb23
+- !<RenderMeshVisual/9c7383e8-0b50-4375-839c-98fa39f65837>
+  PrefabRemaps:
+    []
+  Name: Render Mesh Visual
+  Enabled: true
+  RenderOrder: 0
+  StretchMode: Stretch
+  VerticalAlignment: Center
+  HorizontalAlignment: Center
+  MeshShadowMode: None
+  ShadowColor: {x: 1.000000, y: 1.000000, z: 1.000000, w: 1.000000}
+  ShadowDensity: 1.000000
+  Materials:
+    - !<reference> 9c28fec2-38e7-4dd7-a51d-c123fceb7a94
+  Mesh: !<reference> 78f8d565-df35-420b-b03d-34728c542619
+  Skin: !<reference> 00000000-0000-0000-0000-000000000000
+  BlendShapesEnabled: true
+  BlendNormals: false
+  BlendShapes:
+    {}
 - !<SceneObject/a02684bd-c22e-4aa0-b92a-242a35f81bc3>
   PrefabRemaps:
     []
@@ -2517,6 +2538,7 @@
       unmutedIconObject: !<reference.SceneObject> 90a28ce3-19d6-41e5-86ee-04fce0b03efb
       mutedIconObject: !<reference.SceneObject> c9cc4881-4642-4d16-a6b0-0b85515f8064
       palmOffset: !<Vec3> {x: 0.000000, y: 3.000000, z: 4.000000}
+      pttEffectObject: !<reference.SceneObject> c19e082c-bcd1-4ebe-bcca-f1858a510752
       debugLogging: true
   ScriptTypes:
     "":
@@ -2944,6 +2966,21 @@
   ScriptTypes:
     "":
       {}
+- !<SceneObject/c19e082c-bcd1-4ebe-bcca-f1858a510752>
+  PrefabRemaps:
+    []
+  Name: PTT Indicator
+  Enabled: false
+  Layers: 1
+  LocalTransform: !<TransformEntity>
+    Position: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Rotation: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Scale: {x: 1.000000, y: 1.000000, z: 1.000000}
+    HasSegmentScaleCompensation: false
+  Children:
+    []
+  Components:
+    - !<own> 9c7383e8-0b50-4375-839c-98fa39f65837
 - !<SceneObject/c58321cd-c6a7-4e12-a0bc-be5975934835>
   PrefabRemaps:
     []

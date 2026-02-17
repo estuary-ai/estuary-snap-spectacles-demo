@@ -66,7 +66,7 @@ export class EstuaryCredentials extends BaseScriptComponent implements IEstuaryC
      */
     @input
     @hint("Your API key from the Estuary dashboard")
-    apiKey: string = "";
+    apiKey: string = "[YOUR_ESTUARY_API_KEY]";
     
     /** 
      * The character/agent ID to connect to.
@@ -74,15 +74,15 @@ export class EstuaryCredentials extends BaseScriptComponent implements IEstuaryC
      */
     @input
     @hint("Character/Agent ID from your Estuary dashboard")
-    characterId: string = "";
+    characterId: string = "[YOUR_ESTUARY_CHARACTER_ID]";
     
     /** 
      * The Estuary server URL.
      * Default: wss://api.estuary-ai.com
      * Local dev: ws://localhost:4001
      */
-    @input
-    @hint("Estuary server URL (default: wss://api.estuary-ai.com)")
+    // @input
+    // @hint("Estuary server URL (default: wss://api.estuary-ai.com)")
     serverUrl: string = "wss://api.estuary-ai.com";
     
     // ==================== User ID Configuration ====================

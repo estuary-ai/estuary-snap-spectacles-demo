@@ -555,11 +555,7 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     getCharacter(): EstuaryCharacter | null {
         return this.character;
     }
-    
-    /** Get the vision intent detector for natural language camera activation */
-    getVisionIntentDetector(): VisionIntentDetector | null {
-        return this.visionIntentDetector;
-    }
+
 
     /** Whether the microphone is currently muted (not recording) */
     get isMuted(): boolean {

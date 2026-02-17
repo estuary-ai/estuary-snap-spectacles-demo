@@ -595,7 +595,33 @@ export class SimpleAutoConnect extends BaseScriptComponent {
     getVisionIntentDetector(): VisionIntentDetector | null {
         return this.visionIntentDetector;
     }
-    
+
+    /** Whether the microphone is currently muted (not recording) */
+    get isMuted(): boolean {
+        return this.microphone ? !this.microphone.isRecording : true;
+    }
+
+    /** Toggle mute state. Returns true if now muted, false if now unmuted. */
+    toggleMute(): boolean {
+        if (this.microphone) {
+            this.microphone.toggleRecording();
+            const muted = !this.microphone.isRecording;
+            print(`[SimpleAutoConnect] Mic ${muted ? 'MUTED' : 'UNMUTED'}`);
+            return muted;
+        }
+        return true;
+    }
+
+    /** Set mute state explicitly */
+    setMuted(muted: boolean): void {
+        if (!this.microphone) return;
+        if (muted && this.microphone.isRecording) {
+            this.microphone.stopRecording();
+        } else if (!muted && !this.microphone.isRecording) {
+            this.microphone.startRecording();
+        }
+    }
+
     // ==================== Utility ====================
     
     private log(message: string): void {

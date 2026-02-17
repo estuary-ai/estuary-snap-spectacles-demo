@@ -78,7 +78,7 @@ export class ConnectionIndicator extends BaseScriptComponent {
         }
 
         // Set up hand tracking via SIK
-        this._hand = HandInputData.getInstance().getHand("right");
+        this._hand = HandInputData.getInstance().getHand("left");
 
         this._hand.onHandFound.add(() => {
             this.log("Hand found — attaching indicator");

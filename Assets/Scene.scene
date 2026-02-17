@@ -1609,7 +1609,6 @@
   ScriptInputsDefault:
     _renderOrder: true
     _inactive: true
-    _playAudio: true
     _hasShadow: true
     _shadowPositionOffset: true
     _defaultToOn: true
@@ -1623,7 +1622,7 @@
     "":
       _renderOrder: 0
       _inactive: false
-      _playAudio: false
+      _playAudio: true
       _style: Primary
       _hasShadow: false
       _shadowPositionOffset: !<Vec3> {x: 0.050000, y: -0.050000, z: -0.010000}
@@ -2929,7 +2928,6 @@
   Enabled: true
   ScriptAsset: !<reference> 733f6a95-3e4d-4328-8094-851235be6b03
   ScriptInputsDefault:
-    serverUrl: true
     useSnapAccountId: true
     userIdField: true
     debugMode: true
@@ -2939,7 +2937,7 @@
     "":
       apiKey: est_lse4WLf-snF4TXvIoTYvO8B7va7UYKJ8exWanrTNxSY
       characterId: 46c10647-c1f3-41c6-801b-b5759d3b1ffa
-      serverUrl: "ws://localhost:4001"
+      serverUrl: "ws://192.168.1.133:4001"
       useSnapAccountId: true
       userIdField: ""
       debugMode: true

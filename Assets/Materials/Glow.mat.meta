@@ -1,8 +1,8 @@
-- !<AssetImportMetadata/48f514f9-59f2-46e9-b494-166bc92e58d1>
+- !<AssetImportMetadata/ff9d34c9-de1a-4796-9bd5-8ec3454d0691>
   ImportedAssetIds:
-    HandTracking3DAsset: !<reference> d7a1b7a3-3911-42de-8c3a-39a7c1fc71f7
-  ImporterName: HandTracking3DAssetImporter
-  PrimaryAsset: !<reference> d7a1b7a3-3911-42de-8c3a-39a7c1fc71f7
+    Material: !<reference> 9c28fec2-38e7-4dd7-a51d-c123fceb7a94
+  ImporterName: MaterialImporter
+  PrimaryAsset: !<reference> 9c28fec2-38e7-4dd7-a51d-c123fceb7a94
   PackageType: NotAPackage
   LegacyPackagePolicy: ~
   ExtraData:

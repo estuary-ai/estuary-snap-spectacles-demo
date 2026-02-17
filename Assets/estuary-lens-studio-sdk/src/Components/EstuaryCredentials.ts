@@ -83,7 +83,7 @@ export class EstuaryCredentials extends BaseScriptComponent implements IEstuaryC
      */
     @input
     @hint("Estuary server URL (default: wss://api.estuary-ai.com)")
-    serverUrl: string = "ws://localhost:4001";
+    serverUrl: string = "wss://api.estuary-ai.com";
     
     // ==================== User ID Configuration ====================
     

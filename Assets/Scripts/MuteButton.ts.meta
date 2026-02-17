@@ -1,0 +1,56 @@
+- !<AssetImportMetadata/c42b541f-bf97-4124-9a97-062edaa74168>
+  ImportedAssetIds:
+    TypeScriptAsset: !<reference> ecaf3bf2-598d-4892-8725-53c2945ce61e
+  ImporterName: TypeScriptAssetImporter
+  PrimaryAsset: !<reference> ecaf3bf2-598d-4892-8725-53c2945ce61e
+  PackageType: NotAPackage
+  LegacyPackagePolicy: ~
+  ExtraData:
+    {}
+  AssetDataMap:
+    TypeScriptAsset: !<own> 408ad403-848f-4402-9c04-46e80210a52b
+  DependentFiles:
+    []
+  ImporterSettings: !<AssetImporterSettings>
+    {}
+  CompressionSettings: !<own> 00000000-0000-0000-0000-000000000000
+- !<TypeScriptAssetData/408ad403-848f-4402-9c04-46e80210a52b>
+  SvgIcon: ""
+  SetupScript:
+    code: ""
+  Description: ""
+  VersionMajor: 0
+  VersionMinor: 0
+  VersionPatch: 0
+  ComponentUid: 3aa275f4-9563-40fc-ac81-f5a5ddcb67fc
+  ExportUid: 00000000-0000-0000-0000-000000000000
+  PackagePolicy: CanBeUnpacked
+  ScriptInputsHidden:
+    debugLogging: false
+    mutedIconObject: false
+    palmOffset: false
+    unmutedIconObject: false
+    voiceConnection: false
+  ScriptTypesHidden:
+    {}
+  ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
+  DeclarationFile: !<reference> 00000000-0000-0000-0000-000000000000
+  Tags:
+    []
+  Attachments:
+    []
+  DefaultScriptInputs:
+    - voiceConnection: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
+      unmutedIconObject: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
+      mutedIconObject: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
+      palmOffset: !<Vec3> {x: 0.000000, y: 3.000000, z: 0.000000}
+      debugLogging: false
+  ScriptTypes:
+    -
+      {}
+  InputLines:
+    - '// @input SceneObject voiceConnection {"hint":"SceneObject with SimpleAutoConnect script (Estuary Character)"}'
+    - '// @input SceneObject unmutedIconObject {"hint":"Child SceneObject showing unmuted mic icon (visible when LIVE)"}'
+    - '// @input SceneObject mutedIconObject {"hint":"Child SceneObject showing muted mic icon (visible when MUTED)"}'
+    - '// @input vec3 palmOffset = {0,3,0} {"hint":"Offset from hand attachment point (cm). Positive Y = above palm."}'
+    - '// @input bool debugLogging {"hint":"Enable debug logging"}'
